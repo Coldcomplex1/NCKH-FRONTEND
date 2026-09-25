@@ -1,0 +1,201 @@
+/**
+ * Weather gazetteer (critique: no free-text geocoding). The 63 ViMD provinces — ids match
+ * `src/content/results.json` provinces[].id — with their capital city's coordinates (2 decimals),
+ * plus city aliases that resolve to a province (with the city's own name) or to their own point.
+ * Names are matched diacritic-insensitively, so "hue", "da nang", "sai gon" all work.
+ */
+export interface PlaceEntry {
+  id: string
+  vi: string
+  en: string
+  lat: number
+  lon: number
+  /** Extra spoken/typed names (lowercase; the `vi` name is always included). */
+  aliases?: readonly string[]
+}
+
+export const PROVINCES: readonly PlaceEntry[] = [
+  // ---- North (25)
+  {
+    id: 'HaNoi',
+    vi: 'Hà Nội',
+    en: 'Hanoi',
+    lat: 21.03,
+    lon: 105.85,
+    aliases: ['hn', 'thủ đô', 'hanoi', 'thủ đô hà nội', 'hà tây'],
+  },
+  { id: 'HaiPhong', vi: 'Hải Phòng', en: 'Hai Phong', lat: 20.86, lon: 106.68 },
+  { id: 'QuangNinh', vi: 'Quảng Ninh', en: 'Quang Ninh', lat: 20.95, lon: 107.08 },
+  { id: 'HaiDuong', vi: 'Hải Dương', en: 'Hai Duong', lat: 20.94, lon: 106.33, aliases: ['hải hưng'] },
+  { id: 'HungYen', vi: 'Hưng Yên', en: 'Hung Yen', lat: 20.65, lon: 106.05 },
+  { id: 'BacNinh', vi: 'Bắc Ninh', en: 'Bac Ninh', lat: 21.19, lon: 106.08, aliases: ['hà bắc'] },
+  { id: 'BacGiang', vi: 'Bắc Giang', en: 'Bac Giang', lat: 21.27, lon: 106.19 },
+  { id: 'VinhPhuc', vi: 'Vĩnh Phúc', en: 'Vinh Phuc', lat: 21.31, lon: 105.6 },
+  { id: 'PhuTho', vi: 'Phú Thọ', en: 'Phu Tho', lat: 21.32, lon: 105.4, aliases: ['vĩnh phú'] },
+  { id: 'ThaiNguyen', vi: 'Thái Nguyên', en: 'Thai Nguyen', lat: 21.59, lon: 105.85, aliases: ['bắc thái'] },
+  { id: 'BacKan', vi: 'Bắc Kạn', en: 'Bac Kan', lat: 22.15, lon: 105.83, aliases: ['bắc cạn'] },
+  { id: 'CaoBang', vi: 'Cao Bằng', en: 'Cao Bang', lat: 22.67, lon: 106.26 },
+  { id: 'LangSon', vi: 'Lạng Sơn', en: 'Lang Son', lat: 21.85, lon: 106.76 },
+  { id: 'TuyenQuang', vi: 'Tuyên Quang', en: 'Tuyen Quang', lat: 21.82, lon: 105.21 },
+  { id: 'HaGiang', vi: 'Hà Giang', en: 'Ha Giang', lat: 22.82, lon: 104.98 },
+  { id: 'YenBai', vi: 'Yên Bái', en: 'Yen Bai', lat: 21.72, lon: 104.87 },
+  { id: 'LaoCai', vi: 'Lào Cai', en: 'Lao Cai', lat: 22.49, lon: 103.97 },
+  { id: 'LaiChau', vi: 'Lai Châu', en: 'Lai Chau', lat: 22.4, lon: 103.46 },
+  { id: 'DienBien', vi: 'Điện Biên', en: 'Dien Bien', lat: 21.39, lon: 103.02 },
+  { id: 'SonLa', vi: 'Sơn La', en: 'Son La', lat: 21.33, lon: 103.91 },
+  { id: 'HoaBinh', vi: 'Hòa Bình', en: 'Hoa Binh', lat: 20.81, lon: 105.34 },
+  { id: 'HaNam', vi: 'Hà Nam', en: 'Ha Nam', lat: 20.54, lon: 105.91 },
+  { id: 'NamDinh', vi: 'Nam Định', en: 'Nam Dinh', lat: 20.42, lon: 106.17 },
+  { id: 'ThaiBinh', vi: 'Thái Bình', en: 'Thai Binh', lat: 20.45, lon: 106.34 },
+  { id: 'NinhBinh', vi: 'Ninh Bình', en: 'Ninh Binh', lat: 20.25, lon: 105.97 },
+  // ---- Central (19)
+  { id: 'ThanhHoa', vi: 'Thanh Hóa', en: 'Thanh Hoa', lat: 19.81, lon: 105.78 },
+  { id: 'NgheAn', vi: 'Nghệ An', en: 'Nghe An', lat: 18.68, lon: 105.69, aliases: ['xứ nghệ', 'nghệ tĩnh'] },
+  { id: 'HaTinh', vi: 'Hà Tĩnh', en: 'Ha Tinh', lat: 18.34, lon: 105.91 },
+  { id: 'QuangBinh', vi: 'Quảng Bình', en: 'Quang Binh', lat: 17.47, lon: 106.62 },
+  { id: 'QuangTri', vi: 'Quảng Trị', en: 'Quang Tri', lat: 16.82, lon: 107.1 },
+  {
+    id: 'ThuaThienHue',
+    vi: 'Thừa Thiên Huế',
+    en: 'Thua Thien Hue',
+    lat: 16.46,
+    lon: 107.59,
+    aliases: ['thừa thiên'],
+  },
+  { id: 'DaNang', vi: 'Đà Nẵng', en: 'Da Nang', lat: 16.05, lon: 108.21, aliases: ['danang'] },
+  // (Quảng: "Quảng Nôm")
+  { id: 'QuangNam', vi: 'Quảng Nam', en: 'Quang Nam', lat: 15.57, lon: 108.47, aliases: ['quảng nôm'] },
+  { id: 'QuangNgai', vi: 'Quảng Ngãi', en: 'Quang Ngai', lat: 15.12, lon: 108.8 },
+  { id: 'BinhDinh', vi: 'Bình Định', en: 'Binh Dinh', lat: 13.78, lon: 109.22, aliases: ['nghĩa bình'] },
+  { id: 'PhuYen', vi: 'Phú Yên', en: 'Phu Yen', lat: 13.09, lon: 109.31 },
+  { id: 'KhanhHoa', vi: 'Khánh Hòa', en: 'Khanh Hoa', lat: 12.24, lon: 109.19, aliases: ['phú khánh'] },
+  { id: 'NinhThuan', vi: 'Ninh Thuận', en: 'Ninh Thuan', lat: 11.56, lon: 108.99 },
+  { id: 'BinhThuan', vi: 'Bình Thuận', en: 'Binh Thuan', lat: 10.93, lon: 108.1, aliases: ['thuận hải'] },
+  { id: 'KonTum', vi: 'Kon Tum', en: 'Kon Tum', lat: 14.35, lon: 108.0, aliases: ['công tum', 'kontum'] },
+  { id: 'GiaLai', vi: 'Gia Lai', en: 'Gia Lai', lat: 13.98, lon: 108.0 },
+  {
+    id: 'DakLak',
+    vi: 'Đắk Lắk',
+    en: 'Dak Lak',
+    lat: 12.67,
+    lon: 108.04,
+    aliases: ['đắc lắc', 'đắk lắc', 'daklak'],
+  },
+  { id: 'DakNong', vi: 'Đắk Nông', en: 'Dak Nong', lat: 12.0, lon: 107.69, aliases: ['đắc nông', 'daknong'] },
+  { id: 'LamDong', vi: 'Lâm Đồng', en: 'Lam Dong', lat: 11.94, lon: 108.44 },
+  // ---- South (19)
+  {
+    id: 'HoChiMinh',
+    vi: 'TP. Hồ Chí Minh',
+    en: 'Ho Chi Minh City',
+    lat: 10.78,
+    lon: 106.7,
+    aliases: [
+      'hồ chí minh',
+      'thành phố hồ chí minh',
+      'tp hồ chí minh',
+      'tp hcm',
+      'hcm',
+      'sài gòn',
+      'sg',
+      'saigon',
+      'thành phố sài gòn',
+      'gia định',
+      'chợ lớn',
+    ],
+  },
+  {
+    id: 'BaRiaVungTau',
+    vi: 'Bà Rịa – Vũng Tàu',
+    en: 'Ba Ria – Vung Tau',
+    lat: 10.5,
+    lon: 107.17,
+    aliases: ['bà rịa vũng tàu', 'bà rịa', 'brvt'],
+  },
+  { id: 'BinhDuong', vi: 'Bình Dương', en: 'Binh Duong', lat: 10.98, lon: 106.65, aliases: ['sông bé'] },
+  { id: 'DongNai', vi: 'Đồng Nai', en: 'Dong Nai', lat: 10.95, lon: 106.82 },
+  { id: 'BinhPhuoc', vi: 'Bình Phước', en: 'Binh Phuoc', lat: 11.54, lon: 106.89 },
+  { id: 'TayNinh', vi: 'Tây Ninh', en: 'Tay Ninh', lat: 11.31, lon: 106.1 },
+  { id: 'LongAn', vi: 'Long An', en: 'Long An', lat: 10.54, lon: 106.41 },
+  { id: 'TienGiang', vi: 'Tiền Giang', en: 'Tien Giang', lat: 10.36, lon: 106.36 },
+  { id: 'BenTre', vi: 'Bến Tre', en: 'Ben Tre', lat: 10.24, lon: 106.38 },
+  { id: 'TraVinh', vi: 'Trà Vinh', en: 'Tra Vinh', lat: 9.93, lon: 106.35 },
+  { id: 'VinhLong', vi: 'Vĩnh Long', en: 'Vinh Long', lat: 10.25, lon: 105.97, aliases: ['cửu long'] },
+  { id: 'DongThap', vi: 'Đồng Tháp', en: 'Dong Thap', lat: 10.46, lon: 105.63 },
+  { id: 'AnGiang', vi: 'An Giang', en: 'An Giang', lat: 10.39, lon: 105.44 },
+  { id: 'KienGiang', vi: 'Kiên Giang', en: 'Kien Giang', lat: 10.01, lon: 105.08 },
+  { id: 'CanTho', vi: 'Cần Thơ', en: 'Can Tho', lat: 10.03, lon: 105.78 },
+  { id: 'HauGiang', vi: 'Hậu Giang', en: 'Hau Giang', lat: 9.78, lon: 105.47 },
+  { id: 'SocTrang', vi: 'Sóc Trăng', en: 'Soc Trang', lat: 9.6, lon: 105.97 },
+  { id: 'BacLieu', vi: 'Bạc Liêu', en: 'Bac Lieu', lat: 9.29, lon: 105.72 },
+  { id: 'CaMau', vi: 'Cà Mau', en: 'Ca Mau', lat: 9.18, lon: 105.15, aliases: ['minh hải'] },
+]
+
+/**
+ * Cities people name instead of their province. `id` is the province id when the city is the
+ * provincial capital (same coordinates), or its own id when it is a separate point.
+ */
+export const CITIES: readonly PlaceEntry[] = [
+  {
+    id: 'ThuaThienHue',
+    vi: 'Huế',
+    en: 'Hue',
+    lat: 16.46,
+    lon: 107.59,
+    aliases: ['cố đô', 'thành phố huế', 'cố đô huế'],
+  },
+  { id: 'QuangNinh', vi: 'Hạ Long', en: 'Ha Long', lat: 20.95, lon: 107.08, aliases: ['vịnh hạ long'] },
+  { id: 'NgheAn', vi: 'Vinh', en: 'Vinh', lat: 18.68, lon: 105.69, aliases: ['thành phố vinh'] },
+  { id: 'QuangBinh', vi: 'Đồng Hới', en: 'Dong Hoi', lat: 17.47, lon: 106.62 },
+  { id: 'QuangTri', vi: 'Đông Hà', en: 'Dong Ha', lat: 16.82, lon: 107.1 },
+  { id: 'QuangNam', vi: 'Tam Kỳ', en: 'Tam Ky', lat: 15.57, lon: 108.47 },
+  { id: 'BinhDinh', vi: 'Quy Nhơn', en: 'Quy Nhon', lat: 13.78, lon: 109.22, aliases: ['qui nhơn'] },
+  { id: 'PhuYen', vi: 'Tuy Hòa', en: 'Tuy Hoa', lat: 13.09, lon: 109.31 },
+  { id: 'KhanhHoa', vi: 'Nha Trang', en: 'Nha Trang', lat: 12.24, lon: 109.19 },
+  {
+    id: 'NinhThuan',
+    vi: 'Phan Rang',
+    en: 'Phan Rang',
+    lat: 11.56,
+    lon: 108.99,
+    aliases: ['phan rang tháp chàm'],
+  },
+  { id: 'BinhThuan', vi: 'Phan Thiết', en: 'Phan Thiet', lat: 10.93, lon: 108.1 },
+  {
+    id: 'GiaLai',
+    vi: 'Pleiku',
+    en: 'Pleiku',
+    lat: 13.98,
+    lon: 108.0,
+    aliases: ['plây cu', 'play cu', 'plei ku'],
+  },
+  {
+    id: 'DakLak',
+    vi: 'Buôn Ma Thuột',
+    en: 'Buon Ma Thuot',
+    lat: 12.67,
+    lon: 108.04,
+    aliases: ['buôn mê thuột', 'ban mê thuột', 'bmt'],
+  },
+  { id: 'DakNong', vi: 'Gia Nghĩa', en: 'Gia Nghia', lat: 12.0, lon: 107.69 },
+  { id: 'LamDong', vi: 'Đà Lạt', en: 'Da Lat', lat: 11.94, lon: 108.44, aliases: ['dalat'] },
+  { id: 'BinhDuong', vi: 'Thủ Dầu Một', en: 'Thu Dau Mot', lat: 10.98, lon: 106.65 },
+  { id: 'DongNai', vi: 'Biên Hòa', en: 'Bien Hoa', lat: 10.95, lon: 106.82 },
+  { id: 'BinhPhuoc', vi: 'Đồng Xoài', en: 'Dong Xoai', lat: 11.54, lon: 106.89 },
+  { id: 'LongAn', vi: 'Tân An', en: 'Tan An', lat: 10.54, lon: 106.41 },
+  { id: 'TienGiang', vi: 'Mỹ Tho', en: 'My Tho', lat: 10.36, lon: 106.36 },
+  { id: 'DongThap', vi: 'Cao Lãnh', en: 'Cao Lanh', lat: 10.46, lon: 105.63 },
+  { id: 'AnGiang', vi: 'Long Xuyên', en: 'Long Xuyen', lat: 10.39, lon: 105.44 },
+  { id: 'KienGiang', vi: 'Rạch Giá', en: 'Rach Gia', lat: 10.01, lon: 105.08 },
+  { id: 'HauGiang', vi: 'Vị Thanh', en: 'Vi Thanh', lat: 9.78, lon: 105.47 },
+  { id: 'PhuTho', vi: 'Việt Trì', en: 'Viet Tri', lat: 21.32, lon: 105.4 },
+  { id: 'VinhPhuc', vi: 'Vĩnh Yên', en: 'Vinh Yen', lat: 21.31, lon: 105.6 },
+  { id: 'HaNam', vi: 'Phủ Lý', en: 'Phu Ly', lat: 20.54, lon: 105.91 },
+  { id: 'DienBien', vi: 'Điện Biên Phủ', en: 'Dien Bien Phu', lat: 21.39, lon: 103.02 },
+  { id: 'BaRiaVungTau', vi: 'Bà Rịa', en: 'Ba Ria', lat: 10.5, lon: 107.17 },
+  // separate points (not a provincial capital)
+  { id: 'VungTau', vi: 'Vũng Tàu', en: 'Vung Tau', lat: 10.35, lon: 107.08, aliases: ['thành phố vũng tàu'] },
+  { id: 'SaPa', vi: 'Sa Pa', en: 'Sa Pa', lat: 22.34, lon: 103.84, aliases: ['sapa'] },
+  { id: 'HoiAn', vi: 'Hội An', en: 'Hoi An', lat: 15.88, lon: 108.33, aliases: ['phố cổ hội an'] },
+  { id: 'PhuQuoc', vi: 'Phú Quốc', en: 'Phu Quoc', lat: 10.22, lon: 103.96, aliases: ['đảo phú quốc'] },
+]

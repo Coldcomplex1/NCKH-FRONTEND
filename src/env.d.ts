@@ -1,0 +1,17 @@
+interface ImportMetaEnv {
+  /** Base URL of the ASR backend. Setting it enables the Audio tab. */
+  readonly VITE_ASR_URL?: string
+  /** Optional kill switch: "false" keeps the Audio tab disabled even when VITE_ASR_URL is set. */
+  readonly VITE_ASR_ENABLED?: string
+  readonly VITE_ASR_TIMEOUT_MS?: string
+  readonly VITE_ASR_MAX_UPLOAD_MB?: string
+  /** Dev only: fake transcripts to exercise the audio UI without a backend. */
+  readonly VITE_ASR_MOCK?: string
+  /** Command parser engine: "rules" (default) or "llm" (future Qwen parser). */
+  readonly VITE_NLU_ENGINE?: string
+  readonly VITE_NLU_URL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}

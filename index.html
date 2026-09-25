@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#FFF8EF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14122B" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Robot Hiểu Giọng Miền · PTNK</title>
+    <meta
+      name="description"
+      content="Robot 3D hiểu lệnh tiếng Việt của mọi vùng miền — demo nghiên cứu PhoWhisper-large tinh chỉnh trên ViMD của nhóm PTNK."
+    />
+    <script>
+      // Apply the saved theme + language before first paint (keys shared with src/store/prefsStore.ts).
+      ;(function () {
+        var d = document.documentElement
+        var dark = false
+        try {
+          var m = localStorage.getItem('nckh:theme') || 'system'
+          var l = localStorage.getItem('nckh:lang')
+          dark = m === 'dark' || (m !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+          d.lang = l === 'en' ? 'en' : 'vi'
+        } catch (e) {
+          dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)
+        }
+        d.dataset.theme = dark ? 'dark' : 'light'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript
+      >Trang này cần JavaScript để chạy robot. · This page needs JavaScript to run the robot.</noscript
+    >
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

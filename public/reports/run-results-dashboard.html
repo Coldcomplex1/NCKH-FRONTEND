@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>PhoWhisper / ViMD — Run Results</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --surface-alt: #eef1f6;
+      --ink: #162033;
+      --muted: #647086;
+      --line: #dce1e9;
+      --line-strong: #c7cfdb;
+      --blue: #4057c8;
+      --blue-soft: #e8ecff;
+      --teal: #14877d;
+      --teal-soft: #e0f3ef;
+      --amber: #bb7416;
+      --amber-soft: #fff0d7;
+      --red: #b7464c;
+      --red-soft: #fce7e8;
+      --north: #4057c8;
+      --central: #bb7416;
+      --south: #14877d;
+      --shadow: 0 14px 40px rgba(35, 48, 77, 0.08);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #10141d;
+      --surface: #171d28;
+      --surface-alt: #202736;
+      --ink: #edf1f8;
+      --muted: #a5afc0;
+      --line: #30394a;
+      --line-strong: #465166;
+      --blue: #93a3ff;
+      --blue-soft: #252d54;
+      --teal: #67d2c6;
+      --teal-soft: #183b38;
+      --amber: #f2b45f;
+      --amber-soft: #44331e;
+      --red: #ff9297;
+      --red-soft: #48262c;
+      --north: #93a3ff;
+      --central: #f2b45f;
+      --south: #67d2c6;
+      --shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #10141d;
+        --surface: #171d28;
+        --surface-alt: #202736;
+        --ink: #edf1f8;
+        --muted: #a5afc0;
+        --line: #30394a;
+        --line-strong: #465166;
+        --blue: #93a3ff;
+        --blue-soft: #252d54;
+        --teal: #67d2c6;
+        --teal-soft: #183b38;
+        --amber: #f2b45f;
+        --amber-soft: #44331e;
+        --red: #ff9297;
+        --red-soft: #48262c;
+        --north: #93a3ff;
+        --central: #f2b45f;
+        --south: #67d2c6;
+        --shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    button, summary { font: inherit; }
+    button:focus-visible, summary:focus-visible, a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--blue) 55%, transparent);
+      outline-offset: 3px;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .masthead {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(24px, 5vw, 48px);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .masthead::after {
+      content: "";
+      position: absolute;
+      inset: auto -7% -45% auto;
+      width: 390px;
+      height: 390px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--blue) 9%, transparent);
+      pointer-events: none;
+    }
+
+    .topline, .hero-grid, .section-heading, .legend, .footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 4px var(--teal-soft);
+    }
+
+    .theme-button {
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: var(--ink);
+      background: var(--surface-alt);
+      cursor: pointer;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    strong { font-weight: 500; }
+    h1 {
+      max-width: 760px;
+      margin: 22px 0 8px;
+      font-size: clamp(34px, 6vw, 66px);
+      line-height: .98;
+      letter-spacing: -.045em;
+      font-weight: 500;
+    }
+
+    .lede {
+      max-width: 720px;
+      margin-bottom: 26px;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 19px);
+    }
+
+    .hero-grid { align-items: flex-end; }
+    .run-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(150px, 1fr));
+      gap: 8px 28px;
+      min-width: min(100%, 500px);
+      margin: 0;
+    }
+
+    .run-meta div { min-width: 0; }
+    dt {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    dd { margin: 2px 0 0; }
+    code {
+      font-family: var(--mono);
+      font-size: .88em;
+      overflow-wrap: anywhere;
+    }
+
+    .stamp {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(5, 5px);
+      align-items: end;
+      gap: 4px;
+      height: 46px;
+      padding: 0 6px;
+      color: var(--blue);
+    }
+    .stamp span { width: 5px; border-radius: 4px; background: currentColor; }
+    .stamp span:nth-child(1) { height: 18px; }
+    .stamp span:nth-child(2) { height: 33px; }
+    .stamp span:nth-child(3) { height: 45px; }
+    .stamp span:nth-child(4) { height: 27px; }
+    .stamp span:nth-child(5) { height: 13px; }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 18px 0 0;
+    }
+    .score {
+      min-width: 0;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .score-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    .score-value { margin: 4px 0 2px; font-size: clamp(30px, 4vw, 44px); line-height: 1; letter-spacing: -.04em; font-weight: 500; }
+    .score-note { color: var(--muted); font-size: 13px; }
+    .good { color: var(--teal); }
+
+    main { margin-top: 42px; }
+    section { margin-top: 48px; scroll-margin-top: 18px; }
+    h2 { margin-bottom: 4px; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.15; letter-spacing: -.025em; font-weight: 500; }
+    h3 { margin-bottom: 4px; font-size: 18px; font-weight: 500; }
+    .section-kicker { margin: 0; color: var(--muted); max-width: 720px; }
+    .lower-better { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 20px;
+    }
+    .panel {
+      min-width: 0;
+      padding: clamp(18px, 3vw, 28px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .span-5 { grid-column: span 5; }
+    .span-7 { grid-column: span 7; }
+    .span-12 { grid-column: 1 / -1; }
+    .panel-copy { color: var(--muted); font-size: 13px; }
+
+    .metric-group { margin-top: 22px; }
+    .metric-group + .metric-group { margin-top: 26px; }
+    .metric-name { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; }
+    .metric-name span:last-child { color: var(--muted); font-size: 12px; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 76px 1fr 54px;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+    .track { height: 12px; border-radius: 999px; background: var(--surface-alt); overflow: hidden; }
+    .fill { display: block; height: 100%; border-radius: inherit; background: var(--blue); }
+    .fill.test { background: var(--teal); }
+    .value { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .delta-note {
+      margin-top: 20px;
+      padding-left: 12px;
+      border-left: 3px solid var(--teal);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chart-frame { position: relative; margin-top: 14px; }
+    .line-chart { display: block; width: 100%; height: auto; overflow: visible; }
+    .chart-grid { stroke: var(--line); stroke-width: 1; }
+    .chart-axis { fill: var(--muted); font: 12px var(--sans); }
+    .wer-line { fill: none; stroke: var(--blue); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+    .loss-line { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .loss-area { fill: color-mix(in srgb, var(--amber) 10%, transparent); }
+    .checkpoint-dot {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      min-width: 15px;
+      padding: 0;
+      border: 3px solid var(--surface);
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 1px var(--blue);
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+    }
+    .checkpoint-dot.selected { width: 20px; height: 20px; min-width: 20px; background: var(--teal); box-shadow: 0 0 0 2px var(--teal); }
+    .checkpoint-dot.greedy { border-radius: 3px; background: var(--amber); box-shadow: 0 0 0 1px var(--amber); }
+    .checkpoint-dot[aria-pressed="true"] { outline: 3px solid color-mix(in srgb, var(--blue) 38%, transparent); outline-offset: 3px; }
+    .point-tip {
+      visibility: hidden;
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 9px);
+      z-index: 5;
+      width: max-content;
+      max-width: 210px;
+      padding: 7px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      transform: translateX(-50%);
+      font-size: 12px;
+      text-align: left;
+      pointer-events: none;
+    }
+    .checkpoint-dot:hover .point-tip, .checkpoint-dot:focus-visible .point-tip { visibility: visible; }
+    .checkpoint-dot.edge-left .point-tip { left: -7px; transform: none; }
+    .checkpoint-dot.edge-right .point-tip { left: auto; right: -7px; transform: none; }
+    .checkpoint-detail {
+      min-height: 44px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--surface-alt);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .checkpoint-detail strong { color: var(--ink); font-weight: 500; }
+
+    .marker-key { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .marker-key span { display: inline-flex; align-items: center; gap: 7px; }
+    .key-shape { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); }
+    .key-shape.square { border-radius: 2px; background: var(--amber); }
+    .rerank-list { display: grid; gap: 8px; margin-top: 16px; }
+    .rerank-row {
+      display: grid;
+      grid-template-columns: 112px 1fr 56px;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .rerank-row strong { color: var(--ink); font-weight: 500; }
+
+    .region-bars { display: grid; gap: 16px; margin-top: 22px; }
+    .region-row { display: grid; grid-template-columns: 66px 1fr 84px; gap: 12px; align-items: center; }
+    .region-track { height: 18px; background: var(--surface-alt); border-radius: 5px; overflow: hidden; }
+    .region-fill { height: 100%; border-radius: inherit; }
+    .region-value { text-align: right; font-variant-numeric: tabular-nums; }
+    .region-value small { display: block; color: var(--muted); }
+
+    .province-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      margin-top: 24px;
+    }
+    .province-column { display: grid; align-content: start; gap: 8px; }
+    .province-row {
+      display: grid;
+      grid-template-columns: 22px minmax(78px, 1fr) minmax(58px, 1.1fr) 47px 35px;
+      gap: 6px;
+      align-items: center;
+      min-height: 24px;
+      font-size: 11px;
+    }
+    .rank, .sample { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .province-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .province-track { height: 7px; border-radius: 999px; background: var(--surface-alt); overflow: hidden; }
+    .province-fill { display: block; height: 100%; border-radius: inherit; }
+    .province-wer { text-align: right; font-variant-numeric: tabular-nums; }
+    .legend { justify-content: flex-start; margin-top: 18px; color: var(--muted); font-size: 12px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+    .distribution-layout {
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 28px;
+      align-items: end;
+      margin-top: 22px;
+    }
+    .histogram {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 9px;
+      height: 230px;
+      align-items: end;
+      padding-top: 26px;
+      border-bottom: 1px solid var(--line-strong);
+    }
+    .hist-col { display: grid; grid-template-rows: 1fr auto; gap: 8px; align-items: end; height: 100%; min-width: 0; }
+    .hist-stack { position: relative; display: flex; align-items: end; justify-content: center; height: 100%; }
+    .hist-bar { width: min(68%, 64px); min-height: 2px; border-radius: 6px 6px 0 0; background: var(--blue); }
+    .hist-count { position: absolute; left: 50%; bottom: calc(var(--bar-height) + 5px); transform: translateX(-50%); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .hist-label { min-height: 34px; color: var(--muted); font-size: 11px; text-align: center; }
+    .distribution-stats { display: grid; gap: 12px; margin: 0; }
+    .distribution-stats div { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .distribution-stats div:last-child { border-bottom: 0; }
+    .distribution-stats dd { font-size: 24px; font-weight: 500; letter-spacing: -.02em; }
+
+    .callout {
+      margin-top: 18px;
+      padding: 13px 15px;
+      border-left: 3px solid var(--amber);
+      background: var(--amber-soft);
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .table-wrap { overflow-x: auto; margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+    td { font-size: 13px; }
+    td.numeric { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .locale { color: var(--muted); white-space: nowrap; }
+    details summary { color: var(--blue); cursor: pointer; }
+    .transcript-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .transcript {
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--surface-alt);
+    }
+    .transcript strong { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+    .transcript p { margin: 0; }
+
+    .context-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; margin-top: 20px; }
+    .split-table td, .split-table th { text-align: right; }
+    .split-table td:first-child, .split-table th:first-child { text-align: left; }
+    .fact-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 18px 0 0; }
+    .fact-list div { min-width: 0; }
+    .normalization-list { margin: 10px 0 0; padding-left: 19px; color: var(--muted); }
+    .normalization-list li + li { margin-top: 4px; }
+
+    footer { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .footer-row { align-items: flex-start; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 920px) {
+      .span-5, .span-7 { grid-column: 1 / -1; }
+      .province-grid { grid-template-columns: 1fr; }
+      .context-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 24px, 1180px); padding-top: 12px; }
+      .masthead { border-radius: 18px; }
+      .scoreboard { grid-template-columns: 1fr; gap: 10px; }
+      .score { padding: 16px; }
+      .run-meta { grid-template-columns: 1fr; }
+      .stamp { display: none; }
+      .panel-grid { display: block; }
+      .panel + .panel { margin-top: 12px; }
+      .distribution-layout { grid-template-columns: 1fr; }
+      .distribution-stats { grid-template-columns: repeat(2, 1fr); }
+      .transcript-grid { grid-template-columns: 1fr; }
+      .fact-list { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 68px 1fr 50px; }
+      .region-row { grid-template-columns: 58px 1fr 76px; }
+      h1 { font-size: 39px; }
+    }
+
+    @media (max-width: 390px) {
+      .masthead, .panel { padding: 16px; }
+      .province-row { grid-template-columns: 20px 80px minmax(48px, 1fr) 44px 31px; gap: 4px; }
+      .histogram { gap: 5px; }
+      .hist-count, .hist-label { font-size: 10px; }
+    }
+
+    @media print {
+      :root { color-scheme: light; }
+      body { background: #fff; }
+      .theme-button { display: none; }
+      .shell { width: 100%; padding: 0; }
+      .masthead, .panel, .score { box-shadow: none; break-inside: avoid; }
+      section { break-before: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <div class="topline">
+        <p class="eyebrow">Model evaluation · completed</p>
+        <div class="topline">
+          <span class="status"><span class="status-dot" aria-hidden="true"></span>Run verified</span>
+          <button class="theme-button" id="themeButton" type="button" aria-label="Switch color theme">Theme: auto</button>
+        </div>
+      </div>
+      <h1>PhoWhisper<br>meets ViMD.</h1>
+      <p class="lede">A technical readout of Vietnamese speech recognition quality across checkpoints, regions, provinces, and individual utterances.</p>
+      <div class="hero-grid">
+        <dl class="run-meta">
+          <div><dt>Model</dt><dd><code>vinai/PhoWhisper-large</code></dd></div>
+          <div><dt>Dataset</dt><dd><code>nguyendv02/ViMD_Dataset</code></dd></div>
+          <div><dt>Selected checkpoint</dt><dd><code>checkpoint-1750</code> · 5-beam rerank</dd></div>
+          <div><dt>Run window</dt><dd>24–31 Aug 2026 · 6d 12h 10m</dd></div>
+        </dl>
+        <div class="stamp" aria-label="Audio waveform motif"><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
+    </header>
+
+    <div class="scoreboard" aria-label="Headline test metrics">
+      <article class="score">
+        <div class="score-label">Test normalized WER ↓</div>
+        <div class="score-value">7.84%</div>
+        <div class="score-note">vs 8.31% validation · 0.47 pp lower</div>
+      </article>
+      <article class="score">
+        <div class="score-label">Test normalized CER ↓</div>
+        <div class="score-value">5.87%</div>
+        <div class="score-note">vs 6.19% validation · 0.33 pp lower</div>
+      </article>
+      <article class="score">
+        <div class="score-label">Test coverage</div>
+        <div class="score-value">2,026</div>
+        <div class="score-note">10.87 hours · 63 provinces · 1,344 speakers</div>
+      </article>
+    </div>
+
+    <main>
+      <section id="quality">
+        <div class="section-heading">
+          <div>
+            <h2>Quality at a glance</h2>
+            <p class="section-kicker">The held-out test set slightly outperforms validation across all three corpus-level error measures.</p>
+          </div>
+          <span class="lower-better">All error rates · lower is better</span>
+        </div>
+        <div class="panel-grid">
+          <article class="panel span-5">
+            <h3>Validation vs test</h3>
+            <p class="panel-copy">Corpus-level scores use the complete token pool for each split.</p>
+            <div id="metricComparison" aria-label="Grouped bar comparison of validation and test error rates"></div>
+            <div class="legend" aria-label="Series legend">
+              <span class="legend-item"><span class="legend-dot" style="background:var(--blue)"></span>Validation</span>
+              <span class="legend-item"><span class="legend-dot" style="background:var(--teal)"></span>Test</span>
+            </div>
+            <p class="delta-note"><strong class="good">Stable generalization.</strong> Test normalized WER is 5.65% lower relative to validation.</p>
+          </article>
+
+          <article class="panel span-7">
+            <h3>Training trajectory</h3>
+            <p class="panel-copy">Greedy validation WER across nine evaluations; choose a marker for checkpoint detail.</p>
+            <div class="chart-frame" id="werChartFrame">
+              <svg class="line-chart" id="werChart" viewBox="0 0 720 260" role="img" aria-labelledby="werTitle werDesc">
+                <title id="werTitle">Greedy validation WER by training step</title>
+                <desc id="werDesc">WER falls from 9.12 percent at step 250 to 8.40 percent at step 2250, with intermediate fluctuation.</desc>
+              </svg>
+              <div id="checkpointDots"></div>
+            </div>
+            <div class="checkpoint-detail" id="checkpointDetail" aria-live="polite"></div>
+            <div class="marker-key">
+              <span><span class="key-shape"></span>Selected after beam rerank</span>
+              <span><span class="key-shape square"></span>Best greedy checkpoint</span>
+            </div>
+            <h3 style="margin-top:24px">Beam-reranked finalists</h3>
+            <div class="rerank-list" id="rerankList" aria-label="Beam-reranked checkpoint comparison"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="geography">
+        <div class="section-heading">
+          <div>
+            <h2>Where the model bends</h2>
+            <p class="section-kicker">Central speech is the clear pressure point; its corpus WER is 4.26 percentage points above the North.</p>
+          </div>
+          <span class="lower-better">Test normalized WER</span>
+        </div>
+        <div class="panel-grid">
+          <article class="panel span-5">
+            <h3>Regional performance</h3>
+            <p class="panel-copy">Each bar shares a 0–12% scale and includes its utterance count.</p>
+            <div class="region-bars" id="regionBars"></div>
+          </article>
+          <article class="panel span-7">
+            <h3>Signal, not certainty</h3>
+            <p class="panel-copy">Province results help prioritize review, but each estimate is based on only 26–43 utterances. Read rank together with sample size.</p>
+            <dl class="fact-list">
+              <div><dt>Best observed</dt><dd><strong>Son La · 3.70%</strong> <span class="lower-better">n=35</span></dd></div>
+              <div><dt>Highest observed</dt><dd><strong>Quang Binh · 18.50%</strong> <span class="lower-better">n=36</span></dd></div>
+              <div><dt>Central median province</dt><dd id="centralMedian">—</dd></div>
+              <div><dt>All-province median</dt><dd id="provinceMedian">—</dd></div>
+            </dl>
+          </article>
+          <article class="panel span-12">
+            <h3>All 63 provinces, ranked</h3>
+            <p class="panel-copy">Shared 0–20% scale · rank 1 is lowest WER · <em>n</em> is utterance count.</p>
+            <div class="province-grid" id="provinceGrid"></div>
+            <div class="legend" aria-label="Region legend">
+              <span class="legend-item"><span class="legend-dot" style="background:var(--north)"></span>North</span>
+              <span class="legend-item"><span class="legend-dot" style="background:var(--central)"></span>Central</span>
+              <span class="legend-item"><span class="legend-dot" style="background:var(--south)"></span>South</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="errors">
+        <div class="section-heading">
+          <div>
+            <h2>Error shape</h2>
+            <p class="section-kicker">Most test utterances cluster below 10% WER, while a small tail contains severe repetition and deletion failures.</p>
+          </div>
+          <span class="lower-better">2,026 test utterances</span>
+        </div>
+        <div class="panel-grid">
+          <article class="panel span-12">
+            <h3>Utterance-level WER distribution</h3>
+            <p class="panel-copy">Bins show normalized WER per utterance, distinct from the corpus-level headline score.</p>
+            <div class="distribution-layout">
+              <div class="histogram" id="histogram" role="img" aria-label="Histogram of test utterance word error rates"></div>
+              <dl class="distribution-stats">
+                <div><dt>Median</dt><dd>6.25%</dd></div>
+                <div><dt>90th percentile</dt><dd>16.20%</dd></div>
+                <div><dt>Perfect utterances</dt><dd>9.62%</dd></div>
+                <div><dt>WER ≥ 25%</dt><dd>2.96%</dd></div>
+              </dl>
+            </div>
+            <div class="callout"><strong>Why can WER exceed 100%?</strong> Insertions count as errors too. A hallucinated or repeated continuation can create more errors than there are reference words.</div>
+          </article>
+          <article class="panel span-12">
+            <h3>Highest-error test utterances</h3>
+            <p class="panel-copy">The two largest failures are long-form repetition loops. Expand a row to compare the original transcript and prediction.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>File</th><th>Locale</th><th>Duration</th><th>WER</th><th>Transcript review</th></tr></thead>
+                <tbody id="exampleRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="context">
+        <div class="section-heading">
+          <div>
+            <h2>Run context</h2>
+            <p class="section-kicker">Enough provenance to reproduce the readout and understand the operating conditions.</p>
+          </div>
+        </div>
+        <div class="context-grid">
+          <article class="panel">
+            <h3>Dataset coverage</h3>
+            <div class="table-wrap">
+              <table class="split-table">
+                <thead><tr><th>Split</th><th>Utterances</th><th>Hours</th><th>Speakers</th><th>&gt;30s</th></tr></thead>
+                <tbody id="splitRows"></tbody>
+              </table>
+            </div>
+            <p class="panel-copy" style="margin:14px 0 0">18,949 utterances · 102.56 hours total · all 63 provinces represented in every split.</p>
+          </article>
+          <article class="panel">
+            <h3>Training recipe</h3>
+            <dl class="fact-list" id="recipeFacts"></dl>
+          </article>
+          <article class="panel">
+            <h3>Compute environment</h3>
+            <dl class="fact-list" id="environmentFacts"></dl>
+          </article>
+          <article class="panel">
+            <h3>Text normalization</h3>
+            <p class="panel-copy"><strong>Raw WER:</strong> Unicode NFC plus whitespace collapsing only.</p>
+            <ul class="normalization-list" id="normalizationList"></ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-row">
+        <span>Generated from the run artifacts in this folder · no external data or network requests</span>
+        <span>Model <code>b9136a44…</code> · Dataset <code>3a5b3015…</code></span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const DATA={"summary":{"model":"vinai/PhoWhisper-large","dataset":"nguyendv02/ViMD_Dataset","modelRevision":"b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb","datasetRevision":"3a5b30157034e7eadd5c75fae1a820c6f9383398","checkpoint":"checkpoint-1750","validation":{"wer_normalized":0.08314647983977147,"wer_raw":0.13031401158985328,"cer_normalized":0.06194132403066756,"num_utterances":1900},"test":{"wer_normalized":0.07844676610906455,"wer_raw":0.1260512448853256,"cer_normalized":0.05868100864045142,"num_utterances":2026},"runStart":"2026-08-24 14:09","runEnd":"2026-08-31 02:19","runSpan":"6d 12h 10m","trainRuntimeHours":51.9},"metrics":[{"step":250,"epoch":1.0681666888563441,"eval_loss":0.2047065794467926,"eval_wer_norm":0.09123770158233656,"eval_wer_raw":0.13668364170431507,"eval_cer_norm":0.06649720046042246},{"step":500,"epoch":2.1363333777126883,"eval_loss":0.19015133380889893,"eval_wer_norm":0.08613879557296862,"eval_wer_raw":0.13325936686834502,"eval_cer_norm":0.06305704887060753},{"step":750,"epoch":3.204500066569032,"eval_loss":0.1876210719347,"eval_wer_norm":0.08587547178844726,"eval_wer_raw":0.13001069587011702,"eval_cer_norm":0.0640054149845565},{"step":1000,"epoch":4.2726667554253766,"eval_loss":0.19332316517829895,"eval_wer_norm":0.08410402087439456,"eval_wer_raw":0.12979518206925178,"eval_cer_norm":0.06188367824727066},{"step":1250,"epoch":5.34083344428172,"eval_loss":0.20579837262630463,"eval_wer_norm":0.08514135699523623,"eval_wer_raw":0.13047365144234607,"eval_cer_norm":0.06251220324043684},{"step":1500,"epoch":6.409000133138064,"eval_loss":0.2184528410434723,"eval_wer_norm":0.08613081606434676,"eval_wer_raw":0.13357066458070593,"eval_cer_norm":0.06289154968601643},{"step":1750,"epoch":7.477166821994408,"eval_loss":0.23323139548301697,"eval_wer_norm":0.08644201690059926,"eval_wer_raw":0.13367443048482625,"eval_cer_norm":0.0641244256341501},{"step":2000,"epoch":8.545333510850753,"eval_loss":0.24688667058944702,"eval_wer_norm":0.08582759473671611,"eval_wer_raw":0.1337542504110726,"eval_cer_norm":0.06375809597836982},{"step":2250,"epoch":9.613500199707095,"eval_loss":0.26440179347991943,"eval_wer_norm":0.08404816431404154,"eval_wer_raw":0.13182260819591002,"eval_cer_norm":0.06151920813289027}],"reranking":[{"checkpoint":"checkpoint-2250","wer":0.08356939379673,"raw":0.13103239092607077,"cer":0.062164468998655555},{"checkpoint":"checkpoint-1750","wer":0.08314647983977147,"raw":0.13031401158985328,"cer":0.06194132403066756},{"checkpoint":"checkpoint-2000","wer":0.08491793075382419,"raw":0.13246116760588114,"cer":0.06360933266637782}],"regions":[{"name":"Central","wer":10.4255,"n":623},{"name":"North","wer":6.1675,"n":783},{"name":"South","wer":7.475,"n":620}],"provinces":[{"name":"SonLa","region":"North","wer":3.6963,"n":35},{"name":"NamDinh","region":"North","wer":3.9398,"n":31},{"name":"LaoCai","region":"North","wer":4.8715,"n":38},{"name":"TuyenQuang","region":"North","wer":4.8757,"n":34},{"name":"PhuTho","region":"North","wer":4.936,"n":32},{"name":"YenBai","region":"North","wer":5.0,"n":33},{"name":"HaiDuong","region":"North","wer":5.1121,"n":30},{"name":"BacKan","region":"North","wer":5.341,"n":34},{"name":"HaNoi","region":"North","wer":5.3529,"n":29},{"name":"HauGiang","region":"South","wer":5.4802,"n":30},{"name":"HaiPhong","region":"North","wer":5.6087,"n":33},{"name":"HoChiMinh","region":"South","wer":5.7481,"n":34},{"name":"BacGiang","region":"North","wer":5.7641,"n":28},{"name":"BacNinh","region":"North","wer":5.9863,"n":29},{"name":"QuangNinh","region":"North","wer":5.9971,"n":34},{"name":"NinhBinh","region":"North","wer":6.0537,"n":26},{"name":"KienGiang","region":"South","wer":6.1759,"n":32},{"name":"DakNong","region":"Central","wer":6.2118,"n":31},{"name":"TraVinh","region":"South","wer":6.2197,"n":40},{"name":"KhanhHoa","region":"Central","wer":6.3235,"n":30},{"name":"DienBien","region":"North","wer":6.3387,"n":28},{"name":"ThaiNguyen","region":"North","wer":6.4255,"n":31},{"name":"LangSon","region":"North","wer":6.4727,"n":33},{"name":"DongNai","region":"South","wer":6.4764,"n":31},{"name":"BinhDuong","region":"South","wer":6.4786,"n":33},{"name":"ThanhHoa","region":"Central","wer":6.6946,"n":29},{"name":"CaoBang","region":"North","wer":6.7875,"n":35},{"name":"HaNam","region":"North","wer":6.8013,"n":27},{"name":"NinhThuan","region":"Central","wer":6.8217,"n":34},{"name":"LaiChau","region":"North","wer":6.8406,"n":27},{"name":"HoaBinh","region":"North","wer":6.8915,"n":32},{"name":"TayNinh","region":"South","wer":6.9516,"n":34},{"name":"ThaiBinh","region":"North","wer":7.0064,"n":33},{"name":"CanTho","region":"South","wer":7.123,"n":28},{"name":"AnGiang","region":"South","wer":7.1899,"n":31},{"name":"LongAn","region":"South","wer":7.3667,"n":38},{"name":"TienGiang","region":"South","wer":7.4384,"n":33},{"name":"NgheAn","region":"Central","wer":7.5415,"n":43},{"name":"QuangTri","region":"Central","wer":7.544,"n":30},{"name":"DongThap","region":"South","wer":7.6325,"n":28},{"name":"BenTre","region":"South","wer":7.7841,"n":31},{"name":"QuangNam","region":"Central","wer":7.8223,"n":30},{"name":"VinhPhuc","region":"North","wer":7.9496,"n":28},{"name":"VinhLong","region":"South","wer":7.9693,"n":30},{"name":"CaMau","region":"South","wer":8.0879,"n":37},{"name":"BinhPhuoc","region":"South","wer":8.1317,"n":35},{"name":"DaNang","region":"Central","wer":8.3674,"n":33},{"name":"HaGiang","region":"North","wer":8.5413,"n":33},{"name":"BacLieu","region":"South","wer":8.7546,"n":33},{"name":"LamDong","region":"Central","wer":8.8684,"n":33},{"name":"DakLak","region":"Central","wer":8.982,"n":34},{"name":"BaRiaVungTau","region":"South","wer":9.409,"n":31},{"name":"KonTum","region":"Central","wer":10.7379,"n":31},{"name":"ThuaThienHue","region":"Central","wer":11.1568,"n":32},{"name":"BinhThuan","region":"Central","wer":11.7053,"n":33},{"name":"SocTrang","region":"South","wer":11.7585,"n":31},{"name":"HungYen","region":"North","wer":11.9781,"n":30},{"name":"PhuYen","region":"Central","wer":12.0581,"n":32},{"name":"BinhDinh","region":"Central","wer":12.842,"n":28},{"name":"HaTinh","region":"Central","wer":12.9258,"n":33},{"name":"GiaLai","region":"Central","wer":14.6024,"n":33},{"name":"QuangNgai","region":"Central","wer":16.5058,"n":38},{"name":"QuangBinh","region":"Central","wer":18.5024,"n":36}],"distribution":{"labels":["0","0–5","5–10","10–20","20–30",">30"],"counts":[195,647,629,438,82,35],"median":0.0625,"p90":0.162,"perfectRate":0.096248766041461,"highRate":0.029615004935834157,"meanUtterance":0.0825881046396841,"n":2026},"examples":[{"filename":"73_0332.wav","region":"Central","province_name":"QuangBinh","duration":"17.900","reference":"Cảm ơn Nhà nước. Cảm ơn anh em chị em. Các chú các con sang với mệ. <ệ cảm ơn. Nhưng mà có cái tiền bạc ăn uống lương tháng cũng nhờ Nhà nước.Vậy chứ mệ mới có ăn có tiêu.","prediction":"Cảm ơn nhà nước. Cảm ơn anh em, chị em, các chú, các con đã tham gia việc với mình. Cảm ơn. Hy vọng của cái liên mạc an hưởng nước bạn cũng như nhà nước. Vậy chứ mấy người, cỏ ăn, cỏ thiếu, ủng hộ, ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hộ ủng hã hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội hội h","wer_norm":"4.5238"},{"filename":"81_0303.wav","region":"Central","province_name":"GiaLai","duration":"11.816","reference":"Cái giống là BĐR ba con chín nó rất hiệu quả, còn giống bốn tám hồi giờ nó tương tự giống như ông Giang nói. Nhưng mà làm gì làm mà biết chuyển đổi cây trồng thì bà con rất là vui mừng","prediction":"Cây giông là BDR, Bệnh viện kiên đã từng mang tất nó rất hiệu quả, còn bù la tang bây giờ nó thường xuyên giống như ông Giang nói, nhưng mà làm gì làm mà không ít, thế được cây trồng bà con rất là mừng. Cây trồng bà con rất là vui, chúng tôi rất là vui khi được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng cây này được trồng.","wer_norm":"3.9767"},{"filename":"77_0282.wav","region":"Central","province_name":"BinhDinh","duration":"21.772","reference":"Bớt chi phí cho phân bón, bớt cho lao động nhưng mà năng suất vẫn cao. Hiệu quả là hiệu quả cái đó. Ngày xưa là bốn lần hoặc ba lần thì cái công nó sẽ nhiều hơn. Tăng cái chi phí lên. Nhưng bây giờ đây giảm chi phí mà năng suất cao thì có lợi cho dân","prediction":"Đến giờ này thì phải nói là bà con thoải mái. Năng suất ánh nồng ngon nhất là phải tám mươi sáu trạng trên một trạm. Mẹ đứt cần phải tám mươi trăm bốn chục cân trên một trạm. Ờ bớt chi phí, phân bón, bớt lao động. Nhưng mà năng suất vẫn cao. Hiệu quả cái đó. Ngày xưa là dạng bốn ngọc, hoặc ba ngọc. Thì cái công nó thì nó nhiều rồi. Tăng cái chi phí thôi. Nhưng mà bây giờ là giảm chi phí mà năng suất cao thì cứ gọi cho dân","wer_norm":"0.9492"},{"filename":"76_0327.wav","region":"Central","province_name":"QuangNgai","duration":"11.521","reference":"Giờ lo xót bên ảnh thôi, lo cho ảnh từ đầu đến cuối thôi chứ, chứ đâu bên kia có tự được thứ gì hết. Ai ăn uống cũng đút, chứ cũng không tự xúc ăn được.","prediction":"Ai ăn uống cũng đốt, chứ cũng không tự sốc ăn được.","wer_norm":"0.7297"},{"filename":"76_0330.wav","region":"Central","province_name":"QuangNgai","duration":"8.437","reference":"Giờ là có bệnh của anh, giờ là hi vọng là anh khỏe, để anh an nhàn, để con đồ nó đi học, đi về là có cha nó ở nhà.","prediction":"Già là cái bệnh của anh. Già hai vạn là anh khỏe. Rồi anh ấy nhờ cái con rồi nó đi học, đi về là coi cho ảnh ạ.","wer_norm":"0.5161"},{"filename":"38_0284.wav","region":"Central","province_name":"HaTinh","duration":"13.735","reference":"Cái cấp phép bể bơi đây á, mà của mình thì hiện tại nó đang ở một cửa. Thành ra là khi mình đã trình hồ sơ một cửa rồi nhưng mà chưa có hồ sơ giấy phép về.","prediction":"Cặp chép để bơ đấy ạ. Mô của chị là hiện tại là đang ở một cửa. Thành ra là khi khi khi khi khi mình đã trình hồ sơ một cửa rồi nhưng mà chưa bỏ hồ sơ giấy khép phế á.","wer_norm":"0.4872"}],"splits":[{"name":"train","num_utterances":15023,"hours":81.429,"min_duration_s":1.054,"max_duration_s":35.284,"num_utterances_over_30s_truncated_by_whisper":445,"num_speakers":10291,"num_provinces":63},{"name":"valid","num_utterances":1900,"hours":10.262,"min_duration_s":1.301,"max_duration_s":31.834,"num_utterances_over_30s_truncated_by_whisper":61,"num_speakers":1320,"num_provinces":63},{"name":"test","num_utterances":2026,"hours":10.872,"min_duration_s":2.536,"max_duration_s":32.033,"num_utterances_over_30s_truncated_by_whisper":64,"num_speakers":1344,"num_provinces":63}],"training":{"num_train_utterances_used":15022,"num_train_utterances_dropped":1,"per_device_train_batch_size":2,"gradient_accumulation_steps":32,"effective_batch_size":64,"train_eval_generation_max_length":448,"final_generation_max_length":448},"recipe":{"language":"vi","task":"transcribe","expand_numbers":true,"learning_rate":0.000005,"lr_scheduler_type":"linear","warmup_steps":500,"num_train_epochs":20,"effective_batch_size":64,"weight_decay":0,"max_grad_norm":1,"apply_spec_augment":true,"mask_time_prob":0.05,"mask_time_length":10,"eval_steps":250,"early_stopping_patience":5,"final_num_beams":5,"max_label_tokens":448,"seed":42},"environment":{"python":"3.11.15","torch":"2.5.1+cu121","transformers":"4.51.3","cuda":"12.1","cudnn":90100,"gpu":"NVIDIA A40","gpu_total_vram_gb":44.4,"bf16_supported":true,"tf32_available":true,"compute_capability":"8.6"},"normalization":{"raw_wer":"Unicode NFC plus whitespace collapsing only","normalized_wer":["Unicode NFC","lowercase (diacritics preserved)","canonical Vietnamese tone placement (hoà = hòa, thuý = thúy)","% expanded to 'phan tram'","digit sequences expanded to Vietnamese number words","punctuation and symbols replaced by spaces","whitespace collapsed"]}};
+
+    const $ = (selector) => document.querySelector(selector);
+    const el = (tag, className, text) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+    const pct = (value, digits = 2) => `${(value * 100).toFixed(digits)}%`;
+    const regionColor = (region) => `var(--${region.toLowerCase()})`;
+    const humanizeProvince = (name) => name.replace(/([a-z])([A-Z])/g, "$1 $2");
+
+    function renderMetricComparison() {
+      const metrics = [
+        ["Normalized WER", "wer_normalized"],
+        ["Raw WER", "wer_raw"],
+        ["Normalized CER", "cer_normalized"]
+      ];
+      const root = $("#metricComparison");
+      metrics.forEach(([label, key]) => {
+        const group = el("div", "metric-group");
+        const heading = el("div", "metric-name");
+        heading.append(el("strong", "", label), el("span", "", "0–15% scale"));
+        group.append(heading);
+        [["Validation", DATA.summary.validation[key], ""], ["Test", DATA.summary.test[key], "test"]].forEach(([name, value, cls]) => {
+          const row = el("div", "bar-row");
+          const track = el("div", "track");
+          const fill = el("span", `fill ${cls}`.trim());
+          fill.style.width = `${Math.min(100, value / .15 * 100)}%`;
+          track.append(fill);
+          row.append(el("span", "", name), track, el("span", "value", pct(value)));
+          group.append(row);
+        });
+        root.append(group);
+      });
+    }
+
+    function renderTrainingChart() {
+      const svg = $("#werChart");
+      const dots = $("#checkpointDots");
+      const ns = "http://www.w3.org/2000/svg";
+      const W = 720, H = 260, m = {l: 56, r: 18, t: 20, b: 38};
+      const minStep = 250, maxStep = 2250, minY = .082, maxY = .094;
+      const x = step => m.l + (step - minStep) / (maxStep - minStep) * (W - m.l - m.r);
+      const y = value => m.t + (maxY - value) / (maxY - minY) * (H - m.t - m.b);
+      const makeSvg = (tag, attrs = {}) => {
+        const node = document.createElementNS(ns, tag);
+        Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+        return node;
+      };
+
+      [.082, .086, .09, .094].forEach(value => {
+        svg.append(makeSvg("line", {x1:m.l, x2:W-m.r, y1:y(value), y2:y(value), class:"chart-grid"}));
+        const label = makeSvg("text", {x:m.l-9, y:y(value)+4, "text-anchor":"end", class:"chart-axis"});
+        label.textContent = `${(value * 100).toFixed(1)}%`;
+        svg.append(label);
+      });
+      [250, 750, 1250, 1750, 2250].forEach(step => {
+        const label = makeSvg("text", {x:x(step), y:H-10, "text-anchor":"middle", class:"chart-axis"});
+        label.textContent = step;
+        svg.append(label);
+      });
+      const axisLabel = makeSvg("text", {x:W-m.r, y:H-10, "text-anchor":"end", class:"chart-axis"});
+      axisLabel.textContent = "step";
+      svg.append(axisLabel);
+
+      const path = DATA.metrics.map((d, i) => `${i ? "L" : "M"}${x(d.step).toFixed(1)},${y(d.eval_wer_norm).toFixed(1)}`).join(" ");
+      svg.append(makeSvg("path", {d:path, class:"wer-line"}));
+
+      const detail = $("#checkpointDetail");
+      const setDetail = (d, button) => {
+        dots.querySelectorAll("button").forEach(node => node.setAttribute("aria-pressed", String(node === button)));
+        const tags = [];
+        if (d.step === 1750) tags.push("selected after beam rerank");
+        if (d.step === 2250) tags.push("best greedy WER");
+        detail.innerHTML = `<strong>Step ${d.step} · epoch ${d.epoch.toFixed(2)}</strong> — WER ${pct(d.eval_wer_norm)}, CER ${pct(d.eval_cer_norm)}, raw WER ${pct(d.eval_wer_raw)}, eval loss ${d.eval_loss.toFixed(3)}${tags.length ? ` · ${tags.join(" · ")}` : ""}.`;
+      };
+
+      DATA.metrics.forEach((d, index) => {
+        const button = el("button", "checkpoint-dot");
+        if (d.step === 1750) button.classList.add("selected");
+        if (d.step === 2250) button.classList.add("greedy");
+        if (index < 2) button.classList.add("edge-left");
+        if (index > DATA.metrics.length - 3) button.classList.add("edge-right");
+        button.type = "button";
+        button.style.left = `${x(d.step)/W*100}%`;
+        button.style.top = `${y(d.eval_wer_norm)/H*100}%`;
+        button.setAttribute("aria-label", `Step ${d.step}, epoch ${d.epoch.toFixed(2)}, WER ${pct(d.eval_wer_norm)}, eval loss ${d.eval_loss.toFixed(3)}`);
+        button.setAttribute("aria-pressed", "false");
+        const tip = el("span", "point-tip", `Step ${d.step} · ${pct(d.eval_wer_norm)} WER`);
+        button.append(tip);
+        button.addEventListener("click", () => setDetail(d, button));
+        button.addEventListener("focus", () => setDetail(d, button));
+        dots.append(button);
+        if (d.step === 1750) setDetail(d, button);
+      });
+    }
+
+    function renderReranking() {
+      const root = $("#rerankList");
+      const sorted = [...DATA.reranking].sort((a,b) => a.wer-b.wer);
+      const max = Math.max(...sorted.map(d => d.wer));
+      sorted.forEach(d => {
+        const row = el("div", "rerank-row");
+        const label = d.checkpoint === DATA.summary.checkpoint ? el("strong", "", `${d.checkpoint} ✓`) : el("span", "", d.checkpoint);
+        const track = el("div", "track");
+        const fill = el("span", "fill test");
+        fill.style.width = `${d.wer / max * 100}%`;
+        track.append(fill);
+        row.append(label, track, el("span", "value", pct(d.wer)));
+        root.append(row);
+      });
+    }
+
+    function renderRegions() {
+      const root = $("#regionBars");
+      DATA.regions.forEach(d => {
+        const row = el("div", "region-row");
+        const track = el("div", "region-track");
+        const fill = el("div", "region-fill");
+        fill.style.width = `${d.wer / 12 * 100}%`;
+        fill.style.background = regionColor(d.name);
+        track.append(fill);
+        const value = el("div", "region-value");
+        value.append(document.createTextNode(`${d.wer.toFixed(2)}%`), el("small", "", `n=${d.n}`));
+        row.append(el("strong", "", d.name), track, value);
+        root.append(row);
+      });
+    }
+
+    function median(values) {
+      const xs = [...values].sort((a,b) => a-b);
+      const middle = Math.floor(xs.length/2);
+      return xs.length % 2 ? xs[middle] : (xs[middle-1]+xs[middle])/2;
+    }
+
+    function renderProvinces() {
+      const root = $("#provinceGrid");
+      const chunkSize = 21;
+      for (let start = 0; start < DATA.provinces.length; start += chunkSize) {
+        const column = el("div", "province-column");
+        DATA.provinces.slice(start, start + chunkSize).forEach((d, localIndex) => {
+          const index = start + localIndex;
+          const row = el("div", "province-row");
+          row.setAttribute("aria-label", `Rank ${index+1}, ${humanizeProvince(d.name)}, ${d.region}, ${d.wer.toFixed(2)} percent WER, ${d.n} utterances`);
+          const track = el("div", "province-track");
+          const fill = el("span", "province-fill");
+          fill.style.width = `${d.wer / 20 * 100}%`;
+          fill.style.background = regionColor(d.region);
+          track.append(fill);
+          row.append(el("span", "rank", String(index+1)), el("span", "province-name", humanizeProvince(d.name)), track, el("span", "province-wer", `${d.wer.toFixed(2)}%`), el("span", "sample", `n=${d.n}`));
+          column.append(row);
+        });
+        root.append(column);
+      }
+      $("#provinceMedian").textContent = `${median(DATA.provinces.map(d => d.wer)).toFixed(2)}%`;
+      $("#centralMedian").textContent = `${median(DATA.provinces.filter(d => d.region === "Central").map(d => d.wer)).toFixed(2)}%`;
+    }
+
+    function renderHistogram() {
+      const root = $("#histogram");
+      const max = Math.max(...DATA.distribution.counts);
+      DATA.distribution.labels.forEach((label, index) => {
+        const count = DATA.distribution.counts[index];
+        const column = el("div", "hist-col");
+        const stack = el("div", "hist-stack");
+        const height = count / max * 100;
+        const bar = el("div", "hist-bar");
+        bar.style.height = `${height}%`;
+        bar.setAttribute("aria-hidden", "true");
+        const countLabel = el("span", "hist-count", count.toLocaleString());
+        countLabel.style.setProperty("--bar-height", `${height}%`);
+        stack.append(bar, countLabel);
+        column.append(stack, el("div", "hist-label", `${label}%`));
+        root.append(column);
+      });
+    }
+
+    function renderExamples() {
+      const root = $("#exampleRows");
+      DATA.examples.forEach((d, index) => {
+        const row = document.createElement("tr");
+        const review = document.createElement("td");
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = "Compare reference and prediction";
+        const grid = el("div", "transcript-grid");
+        [["Reference", d.reference], ["Prediction", d.prediction]].forEach(([label, value]) => {
+          const box = el("div", "transcript");
+          box.append(el("strong", "", label), el("p", "", value));
+          grid.append(box);
+        });
+        details.append(summary, grid);
+        review.append(details);
+        const cells = [
+          el("td", "numeric", String(index+1)),
+          el("td", "", d.filename),
+          el("td", "locale", `${d.region} · ${humanizeProvince(d.province_name)}`),
+          el("td", "numeric", `${Number(d.duration).toFixed(1)}s`),
+          el("td", "numeric", `${(Number(d.wer_norm)*100).toFixed(1)}%`),
+          review
+        ];
+        cells.forEach(cell => row.append(cell));
+        root.append(row);
+      });
+    }
+
+    function renderContext() {
+      const splitRoot = $("#splitRows");
+      DATA.splits.forEach(d => {
+        const row = document.createElement("tr");
+        [d.name[0].toUpperCase()+d.name.slice(1), d.num_utterances.toLocaleString(), d.hours.toFixed(2), d.num_speakers.toLocaleString(), d.num_utterances_over_30s_truncated_by_whisper.toLocaleString()].forEach(value => row.append(el("td", "", value)));
+        splitRoot.append(row);
+      });
+      const recipe = [
+        ["Learning rate", "5 × 10⁻⁶"],
+        ["Scheduler", "Linear · 500 warmup"],
+        ["Effective batch", "64 (2 × 32 accumulation)"],
+        ["Training reached", "Step 2,250 · epoch 9.61"],
+        ["Evaluation", "Every 250 steps"],
+        ["Early-stop patience", "5 evaluations"],
+        ["SpecAugment", "On · time mask 0.05 × 10"],
+        ["Final decoding", "5 beams · max 448 tokens"],
+        ["Seed", "42"],
+        ["Training runtime", "51.9 hours"]
+      ];
+      const recipeRoot = $("#recipeFacts");
+      recipe.forEach(([label, value]) => {
+        const item = document.createElement("div");
+        item.append(el("dt", "", label), el("dd", "", value));
+        recipeRoot.append(item);
+      });
+      const environment = [
+        ["GPU", `${DATA.environment.gpu} · ${DATA.environment.gpu_total_vram_gb} GB`],
+        ["CUDA / cuDNN", `${DATA.environment.cuda} / ${DATA.environment.cudnn}`],
+        ["PyTorch", DATA.environment.torch],
+        ["Transformers", DATA.environment.transformers],
+        ["Precision", "BF16 supported · TF32 available"],
+        ["Python", DATA.environment.python]
+      ];
+      const environmentRoot = $("#environmentFacts");
+      environment.forEach(([label, value]) => {
+        const item = document.createElement("div");
+        item.append(el("dt", "", label), el("dd", "", value));
+        environmentRoot.append(item);
+      });
+      DATA.normalization.normalized_wer.forEach(rule => $("#normalizationList").append(el("li", "", rule)));
+    }
+
+    function initTheme() {
+      const button = $("#themeButton");
+      const modes = ["auto", "light", "dark"];
+      let mode = "auto";
+      button.addEventListener("click", () => {
+        mode = modes[(modes.indexOf(mode)+1)%modes.length];
+        if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+        else document.documentElement.setAttribute("data-theme", mode);
+        button.textContent = `Theme: ${mode}`;
+        button.setAttribute("aria-label", `Color theme is ${mode}; switch theme`);
+      });
+    }
+
+    renderMetricComparison();
+    renderTrainingChart();
+    renderReranking();
+    renderRegions();
+    renderProvinces();
+    renderHistogram();
+    renderExamples();
+    renderContext();
+    initTheme();
+  </script>
+</body>
+</html>

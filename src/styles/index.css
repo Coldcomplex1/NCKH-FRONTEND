@@ -1,0 +1,323 @@
+@import 'tailwindcss';
+/* The republished dashboard is not part of the app's styles. */
+@source not '../../public/reports';
+
+/* Dark mode follows [data-theme] (set before first paint by the inline script in index.html). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ------------------------------------------------------------------------------------------------
+ * "Soft-pop" design tokens: playful, but every text/UI pair is WCAG AA (most AAA) in both themes.
+ * Contrast-checked pairs (light): ink/bg 16.1 · muted/bg 8.3 · white/primary 7.5 · category borders
+ * on surface ≥ 4.6 · warning 6.2. `--accent` (3.7:1 on white) is for GRAPHICS only, never text.
+ * ---------------------------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --bg: #fff8ef;
+  --bg-deco: #ffe9cc;
+  --surface: #ffffff;
+  --surface-2: #fff0dc;
+  --ink: #1c1838;
+  --ink-muted: #4b4768;
+  --line: #e7ddcc;
+  --line-strong: #8f8472;
+  --primary: #5134d4;
+  --primary-hover: #4128b8;
+  --on-primary: #ffffff;
+  --primary-soft: #ece7ff;
+  --accent: #e4572e;
+  --accent-ink: #b8391a;
+  --accent-soft: #ffe4d9;
+  --sun: #ffc940;
+  --sun-soft: #fff3cc;
+  --success: #13795b;
+  --success-soft: #dcf3ea;
+  --warning: #8f5200;
+  --danger: #c0262d;
+  --danger-soft: #fde4e4;
+  --focus: #1c1838;
+
+  /* ViMD regions (Okabe-Ito based; always paired with a text label + shape, never colour alone) */
+  --north: #2166c9;
+  --central: #d1570c;
+  --south: #0a8a64;
+  --north-ink: #1a55ad;
+  --central-ink: #a8440a;
+  --south-ink: #07704f;
+
+  /* Command categories (chip borders / icons; text on the soft tint is always --ink) */
+  --cat-motion: #6b46e5;
+  --cat-motion-soft: #f0ebff;
+  --cat-info: #0a6fb0;
+  --cat-info-soft: #e2f1fb;
+  --cat-chat: #c2410c;
+  --cat-chat-soft: #ffeadf;
+  --cat-home: #a86500;
+  --cat-home-soft: #fff2d1;
+  --cat-dialect: #0b7f74;
+  --cat-dialect-soft: #ddf4f0;
+  --cat-limit: #6a6485;
+  --cat-limit-soft: #efedf4;
+
+  /* Chart series (graphics) */
+  --series-1: #5134d4;
+  --series-2: #e4572e;
+
+  /* Robot panel backdrop */
+  --room-top: #cfe6ff;
+  --room-bottom: #fff1de;
+
+  --shadow-soft: 0 1px 2px rgb(28 24 56 / 0.06), 0 8px 24px rgb(28 24 56 / 0.08);
+  --shadow-pop: 0 2px 0 rgb(28 24 56 / 0.9);
+  --header-h: 4rem;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #14122b;
+  --bg-deco: #1c1940;
+  --surface: #1e1b3a;
+  --surface-2: #262248;
+  --ink: #f7f4ff;
+  --ink-muted: #c4bfdf;
+  --line: #3a3560;
+  --line-strong: #7b75a6;
+  --primary: #a996ff;
+  --primary-hover: #bdaeff;
+  --on-primary: #14122b;
+  --primary-soft: #2c2658;
+  --accent: #ff8a5c;
+  --accent-ink: #ff8a5c;
+  --accent-soft: #3a2230;
+  --sun: #ffd35c;
+  --sun-soft: #3a3320;
+  --success: #4fd6a0;
+  --success-soft: #173a30;
+  --warning: #ffc061;
+  --danger: #ff8a8f;
+  --danger-soft: #45202a;
+  --focus: #ffd35c;
+
+  /* graphics tuned into the dataviz lightness band; text inks stay brighter */
+  --north: #5f98f0;
+  --central: #f0904a;
+  --south: #34c092;
+  --north-ink: #6fa8ff;
+  --central-ink: #ffa057;
+  --south-ink: #3fd6a3;
+
+  --cat-motion: #b7a4ff;
+  --cat-motion-soft: #2a2452;
+  --cat-info: #6fc3ff;
+  --cat-info-soft: #15304a;
+  --cat-chat: #ff9e7a;
+  --cat-chat-soft: #3a2420;
+  --cat-home: #ffc45c;
+  --cat-home-soft: #3a2f14;
+  --cat-dialect: #52d6c4;
+  --cat-dialect-soft: #133a36;
+  --cat-limit: #b3aecf;
+  --cat-limit-soft: #2a2740;
+
+  --series-1: #a996ff;
+  --series-2: #ff8a5c;
+
+  --room-top: #23305e;
+  --room-bottom: #1c1940;
+
+  --shadow-soft: 0 8px 28px rgb(0 0 0 / 0.35);
+  --shadow-pop: 0 2px 0 rgb(0 0 0 / 0.6);
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --header-h: 4.5rem;
+  }
+}
+
+/* Only the colours above exist as utilities (no unchecked Tailwind palette). */
+@theme {
+  --color-*: initial;
+  --font-sans:
+    'Be Vietnam Pro', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-display: 'Nunito Variable', 'Be Vietnam Pro', ui-rounded, system-ui, sans-serif;
+
+  /* With the 18px root: nothing renders below 16px (xs = sm = 16px). */
+  --text-xs: 0.889rem;
+  --text-xs--line-height: 1.55;
+  --text-sm: 0.889rem;
+  --text-sm--line-height: 1.55;
+  --text-base: 1rem;
+  --text-base--line-height: 1.65;
+  --text-lg: 1.222rem;
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.444rem;
+  --text-xl--line-height: 1.45;
+  --text-2xl: 1.778rem;
+  --text-2xl--line-height: 1.35;
+  --text-3xl: 2.222rem;
+  --text-3xl--line-height: 1.3;
+  --text-4xl: 2.889rem;
+  --text-4xl--line-height: 1.25;
+
+  --radius-md: 0.875rem;
+  --radius-lg: 1.333rem;
+  --radius-xl: 1.778rem;
+
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deco: var(--bg-deco);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-sun: var(--sun);
+  --color-sun-soft: var(--sun-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-north: var(--north);
+  --color-central: var(--central);
+  --color-south: var(--south);
+  --color-north-ink: var(--north-ink);
+  --color-central-ink: var(--central-ink);
+  --color-south-ink: var(--south-ink);
+  --color-cat-motion: var(--cat-motion);
+  --color-cat-motion-soft: var(--cat-motion-soft);
+  --color-cat-info: var(--cat-info);
+  --color-cat-info-soft: var(--cat-info-soft);
+  --color-cat-chat: var(--cat-chat);
+  --color-cat-chat-soft: var(--cat-chat-soft);
+  --color-cat-home: var(--cat-home);
+  --color-cat-home-soft: var(--cat-home-soft);
+  --color-cat-dialect: var(--cat-dialect);
+  --color-cat-dialect-soft: var(--cat-dialect-soft);
+  --color-cat-limit: var(--cat-limit);
+  --color-cat-limit-soft: var(--cat-limit-soft);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-room-top: var(--room-top);
+  --color-room-bottom: var(--room-bottom);
+  --color-white: #fff;
+  --color-black: #000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --shadow-soft: var(--shadow-soft);
+  --shadow-pop: var(--shadow-pop);
+}
+
+@layer base {
+  html {
+    /* 18px base that still honours the user's browser font-size setting. */
+    font-size: 112.5%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    /* Vietnamese stacks diacritics (Ể, Ỗ): never use tight line-heights. */
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: var(--sun);
+    color: #1c1838;
+  }
+  section[id] {
+    scroll-margin-top: var(--header-h);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}
+
+/* Reduced motion: calm the UI chrome, but NOT the robot stage — the robot's movement is the content. */
+@media (prefers-reduced-motion: reduce) {
+  :where(*:not(.robot-stage, .robot-stage *)),
+  :where(*:not(.robot-stage, .robot-stage *))::before,
+  :where(*:not(.robot-stage, .robot-stage *))::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@utility sr-only-focusable {
+  &:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dot-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+@theme {
+  --animate-pop-in: pop-in 260ms var(--ease-pop) both;
+  --animate-fade-in: fade-in 200ms ease-out both;
+  --animate-dot: dot-bounce 1.1s ease-in-out infinite;
+}
