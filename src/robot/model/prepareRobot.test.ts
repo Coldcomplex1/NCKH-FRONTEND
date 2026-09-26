@@ -44,8 +44,22 @@ describe('prepareRobot (real RobotExpressive.glb)', () => {
     const p = prepareRobot(gltf)
     expect(p.faceMeshes).toHaveLength(3)
     for (const m of p.faceMeshes) {
-      expect(Object.keys(m.morphTargetDictionary!).sort()).toEqual(['Angry', 'Sad', 'Surprised'])
+      expect(m.morphTargetDictionary).toMatchObject({ Angry: 0, Surprised: 1, Sad: 2 })
     }
+    // Only the eyes/brows primitive gets the per-side targets (appended after the three moods).
+    expect(p.faceFeatures && Object.keys(p.faceFeatures.morphTargetDictionary!)).toEqual([
+      'Angry',
+      'Surprised',
+      'Sad',
+      'EyeCloseL',
+      'EyeCloseR',
+      'BrowUpL',
+      'BrowUpR',
+    ])
+    expect(
+      p.faceMeshes.filter((m) => m !== p.faceFeatures).map((m) => m.morphTargetInfluences!.length),
+    ).toEqual([3, 3])
+    expect(p.rig).not.toBeNull()
     expect(p.headBone?.name).toBe('Head')
     expect(p.headEnd?.name).toBe('Head_end')
     expect(prepareRobot(gltf)).toBe(p)

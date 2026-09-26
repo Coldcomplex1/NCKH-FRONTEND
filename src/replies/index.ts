@@ -30,6 +30,7 @@ const TONES: Partial<Record<ReplyKey, ReplyTone>> = {
   'timer.ask': 'question',
   'timer.clock_time': 'question',
   'home.later': 'sorry',
+  'ai.move_failed': 'sorry',
   'chat.emergency': 'alert',
 }
 

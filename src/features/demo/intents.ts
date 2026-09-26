@@ -24,6 +24,7 @@ import {
   Music,
   Octagon,
   PersonStanding,
+  WandSparkles,
   RotateCw,
   Armchair,
   Smile,
@@ -81,6 +82,7 @@ export const ACTION_ICONS: Record<ActionType, LucideIcon> = {
   fall: ChevronsDown,
   emote: Smile,
   stop: Octagon,
+  custom_move: WandSparkles,
   time: Clock,
   date: CalendarDays,
   weekday: CalendarDays,
@@ -130,6 +132,7 @@ const vi = {
     fall: 'Giả vờ ngã',
     emote: 'Biểu cảm',
     stop: 'Dừng lại',
+    custom_move: 'Động tác mới',
     time: 'Xem giờ',
     date: 'Xem ngày',
     weekday: 'Xem thứ',
@@ -161,6 +164,7 @@ const vi = {
     timer_duration: 'cần biết sau bao lâu',
     clock_time: 'giờ đồng hồ (chưa hỗ trợ)',
     device_later: 'hẹn giờ thiết bị (chưa hỗ trợ)',
+    move_failed: 'chưa nghĩ ra động tác',
   },
   walk: {
     forward: 'tới trước',
@@ -219,6 +223,7 @@ const en: typeof vi = {
     fall: 'Play dead',
     emote: 'Emotion',
     stop: 'Stop',
+    custom_move: 'New move',
     time: 'Time',
     date: 'Date',
     weekday: 'Weekday',
@@ -250,6 +255,7 @@ const en: typeof vi = {
     timer_duration: 'needs a duration',
     clock_time: 'clock time (not yet)',
     device_later: 'timed device (not yet)',
+    move_failed: "couldn't work out the move",
   },
   walk: {
     forward: 'forward',
@@ -324,6 +330,11 @@ export function describeAction(action: Action, lang: Lang, fmt: Fmt): IntentView
       return { ...base, detail: t.turn[action.direction], count: action.count }
     case 'emote':
       return { ...base, icon: EMOTION_ICONS[action.emotion] ?? base.icon, detail: t.emotion[action.emotion] }
+    case 'custom_move': {
+      // The (filtered) name Qwen gave the move, e.g. "Moonwalk"; the generic label otherwise.
+      const name = action.move.name?.[lang]
+      return { ...base, ...(name ? { label: name } : {}), count: action.count }
+    }
     case 'date':
     case 'weekday':
       return { ...base, detail: t.day[dayKey(action.dayOffset)] }

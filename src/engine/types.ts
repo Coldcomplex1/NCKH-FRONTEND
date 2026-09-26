@@ -4,6 +4,7 @@ import type { PlaceRef } from '@/core/places'
 import type { ReplyRef } from '@/core/replies'
 import type { Expression, RobotSemanticState } from '@/core/robot'
 import type { RoomState } from '@/core/room'
+import type { MotionScript } from '@/motion/script'
 
 /**
  * Engine-internal types. The engine is plain TypeScript (no React, no three.js): it talks to the
@@ -56,6 +57,20 @@ export type Step =
    */
   | { op: 'head'; pitch?: number; roll?: number; yaw?: number; ms?: number }
   /**
+   * An AI-invented move (a MotionScript compiled onto the skeleton), performed `count` times while
+   * the root glides to `to` (already clamped to the room). `loop` = repeat until cancelled (the
+   * thinking pose). `ms` = the planner's duration estimate (watchdog, and the body-less pause).
+   */
+  | {
+      op: 'script'
+      move: MotionScript
+      count: number
+      to: Vec2
+      timeScale: number
+      loop?: boolean
+      ms: number
+    }
+  /**
    * Show + announce a reply and (unless muted) speak it. `wait` = blocking (the plan waits for the
    * speech). `silent` = bubble only (no TTS, no live region, not added to the turn): the welcome.
    */
@@ -84,6 +99,7 @@ export const BODY_OPS: ReadonlySet<StepOp> = new Set<StepOp>([
   'turn',
   'expr',
   'head',
+  'script',
 ])
 
 // ---- the controller the 3D scene (or a test double) implements
@@ -94,6 +110,16 @@ export interface PlayOptions {
   /** Total plays (LoopRepeat n). Default 1. */
   repeat?: number
   timeScale?: number
+}
+
+export interface PerformOptions {
+  /** Performances of the whole move (each plays all of its loops). */
+  count: number
+  /** Where the root ends (floor x/z), reached linearly over the performance. */
+  to: Vec2
+  timeScale?: number
+  /** Repeat until cancelled (the thinking pose); `count` and `to` are then ignored. */
+  loop?: boolean
 }
 
 /**
@@ -117,6 +143,8 @@ export interface AnimationController {
   /** Straight-line move of the root at `speed` m/s (the base loop provides the leg motion). */
   moveTo(target: Vec2, opts: { speed: number }): Promise<void>
   turnTo(yaw: number, opts: { extraTurns?: number; durationMs: number }): Promise<void>
+  /** An AI-invented move; resolves after its last loop (or on cancel). No-op without a rig. */
+  perform(move: MotionScript, opts: PerformOptions): Promise<void>
   /** Resolves after `ms` of controller time. */
   wait(ms: number): Promise<void>
   /** Transient pose, read from refs (never from the store). */

@@ -5,13 +5,15 @@ import {
   MapPinned,
   MessageCircle,
   TestTubeDiagonal,
+  WandSparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { Chip } from '@/components/ui'
 import { useDict, useLang } from '@/i18n'
+import { useDemo } from '@/store/demoStore'
 import { demoDict } from '../dict'
 import { submitCommand } from '../pipeline'
-import { EXAMPLE_GROUPS, type ExampleCategory } from './examples'
+import { AI_EXAMPLES, EXAMPLE_GROUPS, type ExampleCategory, type ExampleChip } from './examples'
 
 const CATEGORY_ICONS: Record<ExampleCategory, LucideIcon> = {
   motion: Footprints,
@@ -29,7 +31,35 @@ const CATEGORY_ICONS: Record<ExampleCategory, LucideIcon> = {
  */
 export function ExampleChips() {
   const lang = useLang()
-  const t = useDict(demoDict).chips
+  const d = useDict(demoDict)
+  const t = d.chips
+  const aiOn = useDemo((s) => s.aiMoves === 'on')
+  const groups: {
+    key: string
+    category: ExampleCategory
+    icon: LucideIcon
+    title: string
+    chips: ExampleChip[]
+  }[] = [
+    ...EXAMPLE_GROUPS.map((g) => ({
+      key: g.category,
+      category: g.category,
+      icon: CATEGORY_ICONS[g.category],
+      title: t.categories[g.category],
+      chips: g.chips,
+    })),
+    ...(aiOn
+      ? [
+          {
+            key: 'ai',
+            category: 'motion' as const,
+            icon: WandSparkles,
+            title: d.ai.heading,
+            chips: AI_EXAMPLES,
+          },
+        ]
+      : []),
+  ]
 
   return (
     <section aria-labelledby="chips-title" className="flex flex-col gap-3">
@@ -39,14 +69,14 @@ export function ExampleChips() {
         </h2>
         <p className="text-base text-muted">{t.intro}</p>
       </div>
-      {EXAMPLE_GROUPS.map((group) => {
-        const Icon = CATEGORY_ICONS[group.category]
-        const headingId = `chips-${group.category}`
+      {groups.map((group) => {
+        const Icon = group.icon
+        const headingId = `chips-${group.key}`
         return (
-          <div key={group.category} role="group" aria-labelledby={headingId}>
+          <div key={group.key} role="group" aria-labelledby={headingId}>
             <h3 id={headingId} className="mb-1.5 flex items-center gap-2 text-base font-bold text-ink">
               <Icon aria-hidden="true" className="size-5 text-muted" />
-              {t.categories[group.category]}
+              {group.title}
             </h3>
             <ul className="flex flex-wrap gap-2">
               {group.chips.map((chip) => (

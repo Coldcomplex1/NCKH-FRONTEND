@@ -75,6 +75,14 @@ const SAMPLES: { [K in ReplyKey]: ReplyParams[K][] } = {
   'motion.fall_recover': [{}],
   'motion.emote': [{ emotion: 'happy' }, { emotion: 'sad' }, { emotion: 'angry' }, { emotion: 'surprised' }],
   'motion.stop': [{}],
+  'motion.custom_move': [
+    { name: { vi: 'Lộn nhào', en: 'Somersault' }, count: 1 },
+    { name: { vi: 'Moonwalk', en: 'Moonwalk' }, count: 2 },
+    { name: null, count: 1 },
+    { name: { vi: 'x<script>', en: 'x<script>' }, count: 1 },
+  ],
+  'ai.thinking': [{}],
+  'ai.move_failed': [{}],
   'motion.chain': [
     {
       actions: [
@@ -504,6 +512,28 @@ describe('motion', () => {
     )
     expect(render('motion.chain', { actions: three }, 'en').text).toBe(
       'Okay! Jumping 3 times, waving, then spinning around.',
+    )
+  })
+  it('names an AI-invented move, in a chain too; an unsafe name becomes a generic line', () => {
+    const roll = { vi: 'Lộn nhào', en: 'Somersault' }
+    expect(render('motion.custom_move', { name: roll, count: 1 }).text).toBe('Xem mình Lộn nhào nè!')
+    expect(render('motion.custom_move', { name: roll, count: 2 }, 'en').text).toBe(
+      'Watch this: Somersault, 2 times!',
+    )
+    const bad = { vi: 'x<b>', en: 'x<b>' }
+    expect(render('motion.custom_move', { name: bad, count: 1 }).text).toBe('Xem mình làm nè!')
+    const move = { name: roll } as ReplyParams['motion.chain']['actions'][number] extends infer A
+      ? A extends { type: 'custom_move'; move: infer M }
+        ? M
+        : never
+      : never
+    const actions: ReplyParams['motion.chain']['actions'] = [
+      { type: 'jump', count: 3 },
+      { type: 'custom_move', move, count: 1 },
+    ]
+    expect(render('motion.chain', { actions }).text).toBe('Được! Nhảy 3 lần rồi lộn nhào nè.')
+    expect(render('motion.chain', { actions }, 'en').text).toBe(
+      'Okay! Jumping 3 times, then doing the somersault.',
     )
   })
   it('counts', () => {

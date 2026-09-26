@@ -95,7 +95,7 @@ export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 type SayStep = Extract<Step, { op: 'say' }>
-type BodyStep = Extract<Step, { op: 'base' | 'clip' | 'hold' | 'move' | 'turn' | 'expr' | 'head' }>
+type BodyStep = Extract<Step, { op: 'base' | 'clip' | 'hold' | 'move' | 'turn' | 'expr' | 'head' | 'script' }>
 
 const isBody = (s: Step): s is BodyStep => BODY_OPS.has(s.op)
 
@@ -243,6 +243,12 @@ export class Execution {
         return this.guard(ctrl, ctrl.expression(s.name, s.weight, s.ms), s.ms ?? 300)
       case 'head':
         return this.guard(ctrl, ctrl.head({ pitch: s.pitch, roll: s.roll, yaw: s.yaw }, s.ms), s.ms ?? 300)
+      case 'script':
+        return this.guard(
+          ctrl,
+          ctrl.perform(s.move, { count: s.count, to: s.to, timeScale: s.timeScale, loop: s.loop }),
+          s.ms,
+        )
     }
   }
 
@@ -252,7 +258,7 @@ export class Execution {
    * instead of flipping back in the same tick.
    */
   private bodyless(s: BodyStep): Promise<void> {
-    const ms = s.op === 'hold' ? s.ms : s.op === 'move' ? (s.ms ?? 0) : 0
+    const ms = s.op === 'hold' || s.op === 'script' ? s.ms : s.op === 'move' ? (s.ms ?? 0) : 0
     return ms > 0 ? sleep(Math.min(ms, NO_BODY_HOLD_MAX_MS), this.run.signal) : Promise.resolve()
   }
 

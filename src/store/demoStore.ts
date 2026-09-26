@@ -27,6 +27,8 @@ export interface Turn {
   replies: ReplyRef[]
   status: 'processing' | 'done' | 'interrupted' | 'error'
   error?: string
+  /** Qwen is inventing a move for part of this command (the robot holds its thinking pose). */
+  creating?: boolean
 }
 
 export interface Bubble {
@@ -91,6 +93,8 @@ interface DemoState {
   live: LiveMessage | null
   /** Actions of the most recent turn (set at parse time so interrupted commands still repeat). */
   lastActions: Action[]
+  /** Whether AI-invented moves (Qwen) are available on this site ('unknown' until checked). */
+  aiMoves: 'unknown' | 'on' | 'off'
 
   startTurn(turn: Omit<Turn, 'replies' | 'status'>): void
   patchTurn(id: string, patch: Partial<Turn>): void
@@ -113,6 +117,7 @@ interface DemoState {
   setScene(patch: Partial<SceneState>): void
   announce(ref: ReplyRef, assertive?: boolean): void
   setLastActions(actions: Action[]): void
+  setAiMoves(state: 'on' | 'off'): void
 }
 
 let seq = 0
@@ -130,6 +135,7 @@ export const useDemo = create<DemoState>()((set, get) => ({
   scene: { status: 'loading', progress: null },
   live: null,
   lastActions: [],
+  aiMoves: 'unknown',
 
   startTurn: (turn) =>
     set((s) => ({
@@ -187,6 +193,7 @@ export const useDemo = create<DemoState>()((set, get) => ({
   setScene: (patch) => set((s) => ({ scene: { ...s.scene, ...patch } })),
   announce: (ref, assertive = false) => set({ live: { id: nextId(), ref, assertive } }),
   setLastActions: (actions) => set({ lastActions: actions }),
+  setAiMoves: (aiMoves) => set({ aiMoves }),
 }))
 
 /** Non-React access (engine, pipeline). */

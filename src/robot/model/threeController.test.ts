@@ -1,7 +1,25 @@
 import { Quaternion } from 'three'
 import { describe, expect, it } from 'vitest'
 import { CLIP_DURATION } from '@/engine/spec'
+import { normalizeMotion, type MotionScript } from '@/motion/script'
 import { flush, makeController, run, track } from './testRobot'
+
+function move(raw: Record<string, unknown>): MotionScript {
+  const r = normalizeMotion(raw)
+  if (!r.ok) throw new Error(r.errors.join('; '))
+  return r.move
+}
+
+/** Half a second: squat with the left eye shut, then back up. */
+const SQUAT = move({
+  name: { vi: 'Ngồi xổm', en: 'Squat' },
+  duration: 0.5,
+  keys: [
+    { t: 0 },
+    { t: 0.25, pose: { hipL: [80, 0], hipR: [80, 0], kneeL: [100], kneeR: [100] }, face: { eyeL: 1 } },
+    { t: 0.5 },
+  ],
+})
 
 /** Component-wise distance (angleTo has a ~1e-3 precision floor near 0). */
 const qDiff = (a: Quaternion, b: Quaternion) =>
@@ -221,5 +239,50 @@ describe('threeController', () => {
     const late = track(ctrl.play('Jump'))
     await flush()
     expect(late.done).toBe(true)
+  })
+  it('perform plays a compiled move, glides the root, resolves, then returns to Idle cleanly', async () => {
+    const { ctrl, mixer, prepared } = await makeController()
+    const bone = prepared.scene.getObjectByName('Bone')!
+    const restBone = bone.quaternion.clone()
+    const restBonePos = bone.position.clone()
+    const face = prepared.faceFeatures!
+    const eyeL = face.morphTargetDictionary!.EyeCloseL!
+    const p = track(ctrl.perform(SQUAT, { count: 2, to: { x: 0.5, z: 0 }, timeScale: 1 }))
+    run(ctrl, 0.5)
+    await flush()
+    expect(p.done).toBe(false)
+    expect(ctrl.getPose().x).toBeGreaterThan(0.1)
+    run(ctrl, 0.6)
+    await flush()
+    expect(p.done).toBe(true)
+    expect(ctrl.getPose().x).toBeCloseTo(0.5, 3)
+    // Idle takes over; once the move has faded out its actions are dropped and nothing is left behind.
+    run(ctrl, 1)
+    const idle = mixer.existingAction(prepared.clips.Idle!)!
+    expect(idle.getEffectiveWeight()).toBeCloseTo(1)
+    expect(qDiff(bone.quaternion, restBone)).toBeLessThan(1e-6)
+    expect(bone.position.distanceTo(restBonePos)).toBeLessThan(1e-6)
+    expect(face.morphTargetInfluences![eyeL]).toBe(0)
+  })
+
+  it('a looping perform (the thinking pose) runs until cancel, then fades back to Idle', async () => {
+    const { ctrl, mixer, prepared } = await makeController()
+    const p = track(ctrl.perform(SQUAT, { count: 1, to: { x: 0, z: 0 }, loop: true }))
+    run(ctrl, 5)
+    await flush()
+    expect(p.done).toBe(false)
+    ctrl.cancel()
+    await flush()
+    expect(p.done).toBe(true)
+    run(ctrl, 1)
+    expect(mixer.existingAction(prepared.clips.Idle!)!.getEffectiveWeight()).toBeCloseTo(1)
+  })
+
+  it('perform without a rig resolves at once', async () => {
+    const { ctrl } = await makeController({ rig: null })
+    const p = track(ctrl.perform(SQUAT, { count: 1, to: { x: 1, z: 0 } }))
+    await flush()
+    expect(p.done).toBe(true)
+    expect(ctrl.getPose().x).toBe(0)
   })
 })

@@ -191,6 +191,16 @@ export const en: Templates = {
     if (parts.length === 0) return 'Okay!'
     return `Okay! ${capFirst(thenList(parts))}.`
   },
+  'motion.custom_move': ({ name, count }, c) => {
+    const n = safePhrase(name?.en)
+    if (!n)
+      return count > 1 ? `Watch this, ${c.fmt.int(count)} times!` : c.pick(['Watch this!', 'Okay, watch me!'])
+    return count > 1 ? `Watch this: ${n}, ${c.fmt.int(count)} times!` : `Watch this: ${n}!`
+  },
+
+  // ---- AI moves
+  'ai.thinking': (_, c) => c.pick(['Let me work out that move…', 'Hmm, let me figure that one out…']),
+  'ai.move_failed': () => "Sorry, I couldn't work out that move. Please try again later!",
 
   // ---- information
   'info.time': ({ iso }) => {

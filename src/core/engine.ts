@@ -29,6 +29,11 @@ export interface EngineOutcome {
 export interface RobotEngine {
   /** Interrupts the current run (room state and timers are kept) and runs this request. */
   submit(req: EngineRequest): Promise<EngineOutcome>
+  /**
+   * While Qwen invents a move for this turn: interrupt the current run, face the viewer, say
+   * "Để mình nghĩ động tác…" and hold a thinking pose until the next submit() replaces it.
+   */
+  think(turnId: string): void
   /** Abort the current run, TTS and in-flight fetches. */
   interrupt(): void
   cancelTimer(id: string): void

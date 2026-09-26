@@ -19,7 +19,7 @@ export function loadRobotGltf(): Promise<GLTF> {
   return new Promise((resolve, reject) => new GLTFLoader().parse(ab, '', resolve, reject))
 }
 
-export async function makeController() {
+export async function makeController(opts: { rig?: null } = {}) {
   const gltf = await loadRobotGltf()
   const prepared = prepareRobot(gltf)
   const root = new Group()
@@ -32,6 +32,7 @@ export async function makeController() {
     model: prepared.scene,
     faceMeshes: prepared.faceMeshes,
     headBone: prepared.headBone,
+    rig: opts.rig === null ? null : prepared.rig,
   })
   return { gltf, prepared, root, mixer, ctrl }
 }

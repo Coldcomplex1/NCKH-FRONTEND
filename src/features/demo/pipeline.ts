@@ -9,10 +9,16 @@ import { ENV } from '@/lib/env'
 import { speaker } from '@/speech'
 import { demo, type StageId, type TurnSource } from '@/store/demoStore'
 import { getPrefs } from '@/store/prefsStore'
+import { mergeMoves, planEscalations, type MoveResult } from './escalate'
+import { cachedMove, motionAiAvailable, requestMove } from './motionAi'
 import { asrErrorCode, errorRef, type TurnErrorCode } from './turnErrors'
 
 /**
- * The demo pipeline: input → (ASR) → parse → turn log → robot engine.
+ * The demo pipeline: input → (ASR) → parse → (AI moves) → turn log → robot engine.
+ *
+ * - AI moves: clauses the rules cannot act out (moonwalk, lộn nhào, a crab walk…) are sent to Qwen
+ *   through /api/motion (see escalate.ts). While it works the robot holds a thinking pose; moves
+ *   this browser already has are replayed at once. Off entirely when the site has no Qwen key.
  *
  * - `speaker.prime()` is the FIRST, synchronous statement of every submit (it must run inside the
  *   click/keypress for iOS/Chrome speech activation rules).
@@ -155,7 +161,7 @@ function beginTurn(): { turnId: string; controller: AbortController } {
 
 const isCurrent = (turnId: string) => current?.turnId === turnId
 
-function interrupted(turnId: string, patch: { parse?: ParseResult } = {}): SubmitResult {
+function interrupted(turnId: string, patch: { parse?: ParseResult; creating?: boolean } = {}): SubmitResult {
   demo().patchTurn(turnId, { ...patch, status: 'interrupted' })
   return { status: 'interrupted', turnId }
 }
@@ -187,7 +193,24 @@ async function understandAndAct(
   // Superseded while parsing: record what we understood, but never act on it.
   if (signal.aborted) return interrupted(turnId, { parse })
 
-  demo().patchTurn(turnId, { parse })
+  // AI moves (Qwen): the clauses the rules cannot act out get a move invented for them.
+  const escalations = planEscalations(parse)
+  if (escalations.length > 0 && (await motionAiAvailable())) {
+    if (signal.aborted) return interrupted(turnId, { parse })
+    const known = escalations.map((e) => cachedMove(e))
+    let results: (MoveResult | null)[] = known
+    if (known.some((r) => r === null)) {
+      demo().patchTurn(turnId, { parse, creating: true })
+      engine.think(turnId)
+      results = await Promise.all(
+        escalations.map((e, i) => known[i] ?? requestMove(e, { signal, utterance: text })),
+      )
+      if (signal.aborted) return interrupted(turnId, { parse, creating: false })
+    }
+    parse = mergeMoves(parse, escalations, results as MoveResult[])
+  }
+
+  demo().patchTurn(turnId, { parse, creating: false })
   const actions = parse.actions.map((a) => a.action)
   if (actions.length > 0) demo().setLastActions(actions)
   demo().setStages({ nlu: 'done', robot: 'active' })

@@ -1,6 +1,8 @@
 import { AnimationClip, type Bone, type Mesh, type Object3D } from 'three'
 import type { ClipName } from '@/engine/types'
-import { CLIP_DURATION } from '@/engine/spec'
+import { CLIP_DURATION, ROBOT_SCALE } from '@/engine/spec'
+import { addFaceTargets } from './faceMorphs'
+import { captureMotionRig, type MotionRig } from './motionRig'
 
 /** The parts of a loaded glTF this module needs (keeps it testable without GLTFLoader types). */
 export interface GltfLike {
@@ -19,6 +21,10 @@ export interface PreparedRobot {
   headBone: Bone | null
   /** Tip of the head (the bubble/label anchor). */
   headEnd: Object3D | null
+  /** The face-features mesh with the added per-side eye/brow targets (null: face controls off). */
+  faceFeatures: Mesh | null
+  /** Rest-pose rig for compiling AI-invented moves (null: custom moves are skipped). */
+  rig: MotionRig | null
 }
 
 const MORPH_SUFFIX = '.morphTargetInfluences'
@@ -76,12 +82,30 @@ export function prepareRobot(gltf: GltfLike): PreparedRobot {
     if (KNOWN_CLIPS.has(clip.name)) clips[clip.name as ClipName] = stripMorphTracks(clip)
   }
   const headBone = findHeadBone(gltf.scene)
+  const faceMeshes = findFaceMeshes(gltf.scene)
+  // Runs before any mixer touches the bones: the rig is captured from the rest pose.
+  const faceFeatures = addFaceTargets(gltf.scene, faceMeshes)
+  const rig = captureMotionRig({
+    scene: gltf.scene,
+    idle: clips.Idle ?? null,
+    walk: clips.Walking ?? null,
+    run: clips.Running ?? null,
+    faceMesh: faceFeatures,
+    metresPerUnit: ROBOT_SCALE,
+  })
+  // A skinned mesh's bounding sphere is computed once, from whatever pose it is in, and never
+  // refreshed: with big arm moves the hands could be culled while still in view.
+  gltf.scene.traverse((o) => {
+    if ((o as Mesh & { isSkinnedMesh?: boolean }).isSkinnedMesh) o.frustumCulled = false
+  })
   const prepared: PreparedRobot = {
     scene: gltf.scene,
     clips,
-    faceMeshes: findFaceMeshes(gltf.scene),
+    faceMeshes,
     headBone,
     headEnd: findHeadEnd(headBone),
+    faceFeatures,
+    rig,
   }
   cache.set(gltf, prepared)
   return prepared

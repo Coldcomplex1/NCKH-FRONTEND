@@ -13,6 +13,7 @@ export const SOURCE_ICONS: Record<TurnSource, LucideIcon> = {
 export function transcriptStatus(turn: Turn, asrStage: StageState): TranscriptStatus {
   if (turn.status === 'error') return 'error'
   if (turn.status === 'interrupted') return 'interrupted'
+  if (turn.creating) return 'creating'
   if (!turn.parse) {
     if (turn.status === 'processing') {
       return (turn.source === 'mic' || turn.source === 'file') && asrStage === 'active'

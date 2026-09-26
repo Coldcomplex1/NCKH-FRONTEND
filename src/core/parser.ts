@@ -46,6 +46,19 @@ export interface Substitution {
   region?: DialectRegion[]
 }
 
+export interface ClauseInfo {
+  text: string
+  negated: boolean
+  question: boolean
+  /**
+   * Content words of the clause that no action used ("moonwalk" in "nhảy moonwalk", "như con cua"
+   * in "đi như con cua"). Particles, numbers and fillers never count. Drives the AI-move router.
+   */
+  unexplained?: string[]
+  /** The clause contains a negator ("đừng", "không"…), whether or not an action matched. */
+  hasNegator?: boolean
+}
+
 export interface ParsedAction {
   action: Action
   /** 0–1 */
@@ -97,7 +110,7 @@ export interface ParseResult {
   substitutions: Substitution[]
   /** Count of dialect words recognised per region (drives the "Từ địa phương đã nhận ra" badge). */
   dialectHints: Partial<Record<DialectRegion, number>>
-  clauses: { text: string; negated: boolean; question: boolean }[]
+  clauses: ClauseInfo[]
   /** In execution order. Unsupported actions are included (the engine refuses them politely). */
   actions: ParsedAction[]
   unknown: UnknownInfo[]

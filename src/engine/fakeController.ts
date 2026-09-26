@@ -1,6 +1,16 @@
 import type { Expression } from '@/core/robot'
 import { CLIP_DURATION, HOLD_CLIPS } from './spec'
-import type { AnimationController, LoopClip, OnceClip, PlayOptions, Pose, PoseClip, Vec2 } from './types'
+import { motionSeconds, type MotionScript } from '@/motion/script'
+import type {
+  AnimationController,
+  LoopClip,
+  OnceClip,
+  PerformOptions,
+  PlayOptions,
+  Pose,
+  PoseClip,
+  Vec2,
+} from './types'
 
 /**
  * A test double for the 3D robot (node tests, no WebGL). It records every call and resolves its
@@ -20,6 +30,7 @@ export interface FakeCall {
     | 'head'
     | 'moveTo'
     | 'turnTo'
+    | 'perform'
     | 'wait'
     | 'settle'
     | 'cancel'
@@ -159,6 +170,26 @@ export class FakeController implements AnimationController {
     })
   }
 
+  /** Resolves after all loops × count (virtual time); a looping performance only on cancel. */
+  perform(move: MotionScript, opts: PerformOptions): Promise<void> {
+    this.record('perform', [move.name?.en ?? 'move', opts])
+    if (opts.loop) return this.later(Number.POSITIVE_INFINITY)
+    const from = { x: this.pose.x, z: this.pose.z }
+    const ts = Math.abs(opts.timeScale ?? 1) || 1
+    const ms = (motionSeconds(move) * Math.max(1, opts.count) * 1000) / ts
+    return this.later(
+      ms,
+      () => {
+        this.pose.x = opts.to.x
+        this.pose.z = opts.to.z
+      },
+      (f) => {
+        this.pose.x = from.x + (opts.to.x - from.x) * f
+        this.pose.z = from.z + (opts.to.z - from.z) * f
+      },
+    )
+  }
+
   wait(ms: number): Promise<void> {
     this.record('wait', [ms])
     return this.later(ms)
@@ -207,7 +238,7 @@ export class FakeController implements AnimationController {
         return
       }
       if (scaled === 0) queueMicrotask(() => this.finish(p))
-      else p.timer = setTimeout(() => this.finish(p), scaled)
+      else if (Number.isFinite(scaled)) p.timer = setTimeout(() => this.finish(p), scaled)
     })
   }
 

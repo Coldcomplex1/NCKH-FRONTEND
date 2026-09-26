@@ -50,6 +50,14 @@ export interface ReplyParams {
   'motion.stop': Record<string, never>
   /** One acknowledgement for a chain of motion actions ("Được! Nhảy 3 lần rồi vẫy tay nè."). */
   'motion.chain': { actions: Action[] }
+  /** An AI-invented move. `name` is the filtered move name (null → a generic line). */
+  'motion.custom_move': { name: Bilingual | null; count: number }
+
+  // ---- AI moves (Qwen)
+  /** While Qwen invents a move the robot does not know yet. */
+  'ai.thinking': Record<string, never>
+  /** Qwen could not invent it (timeout, error, off-line). */
+  'ai.move_failed': Record<string, never>
 
   // ---- information
   'info.time': { iso: string }

@@ -10,6 +10,7 @@ import {
   planAlarm,
   planAlarmNotice,
   planReturnHome,
+  planThinking,
   planWelcome,
   splitForBody,
   type PlanRequest,
@@ -454,6 +455,16 @@ export function createEngine(deps: EngineDeps): EngineInstance {
         // Plan the motion from where the body really is (or without one, after the timeout).
         await ex.steps(planNow(parts ? parts.later : planReq).steps)
       })
+    },
+
+    think(turnId: string): void {
+      welcomed = true
+      deps.primeAudio()
+      clearAlarmTitle()
+      interrupt()
+      const r = begin(turnId, 'turn')
+      const steps = planThinking(snapshot()).steps
+      void execRun(r, turnId, (ex) => ex.steps(steps))
     },
 
     interrupt(): void {

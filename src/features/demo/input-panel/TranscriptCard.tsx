@@ -6,6 +6,7 @@ import {
   CircleStop,
   LoaderCircle,
   TriangleAlert,
+  WandSparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { Badge, Chip } from '@/components/ui'
@@ -22,9 +23,13 @@ import { SOURCE_ICONS, transcriptStatus } from './turnView'
 import { IntentChips } from './IntentChips'
 import { PipelineIndicator } from './PipelineIndicator'
 
-const STATUS_STYLE: Record<TranscriptStatus, { icon: LucideIcon; cls: string; spin?: boolean }> = {
+const STATUS_STYLE: Record<
+  TranscriptStatus,
+  { icon: LucideIcon; cls: string; spin?: boolean; pulse?: boolean }
+> = {
   hearing: { icon: LoaderCircle, cls: 'border-primary bg-primary-soft', spin: true },
   thinking: { icon: LoaderCircle, cls: 'border-primary bg-primary-soft', spin: true },
+  creating: { icon: WandSparkles, cls: 'border-primary bg-primary-soft', pulse: true },
   ok: { icon: Check, cls: 'border-success bg-success-soft' },
   partial: { icon: TriangleAlert, cls: 'border-warning bg-sun-soft' },
   impossible: { icon: Ban, cls: 'border-cat-limit bg-cat-limit-soft' },
@@ -74,7 +79,10 @@ function StatusPill({ status }: { status: TranscriptStatus }) {
         st.cls,
       )}
     >
-      <Icon aria-hidden="true" className={cn('size-5', st.spin && 'animate-spin')} />
+      <Icon
+        aria-hidden="true"
+        className={cn('size-5', st.spin && 'animate-spin', st.pulse && 'animate-pulse')}
+      />
       <span className="sr-only">{t.statusLabel}: </span>
       {t.status[status]}
     </span>

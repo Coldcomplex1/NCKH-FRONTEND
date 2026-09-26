@@ -48,6 +48,7 @@ export function Robot({
       model: prepared.scene,
       faceMeshes: prepared.faceMeshes,
       headBone: prepared.headBone,
+      rig: prepared.rig,
     })
     ctrlRef.current = ctrl
     controllerBridge.attach(ctrl)

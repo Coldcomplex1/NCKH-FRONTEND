@@ -36,6 +36,14 @@ if (rawAsrUrl && !asrUrlAllowed) {
 
 const asrUrl = asrUrlAllowed ? rawAsrUrl : ''
 
+/** The AI-moves endpoint: a same-site path, or an allowed absolute origin (as for the ASR). */
+export function motionApiUrl(raw: string | undefined, isDev: boolean): string {
+  const v = trimUrl(raw)
+  if (!v) return '/api/motion'
+  if (v.startsWith('/') && !v.startsWith('//')) return v
+  return isAllowedAsrOrigin(v, isDev) ? v : '/api/motion'
+}
+
 /** Build-time configuration (Vite inlines VITE_* at build time; redeploy after changing). */
 export const ENV = {
   asr: {
@@ -50,5 +58,13 @@ export const ENV = {
   nlu: {
     engine: import.meta.env.VITE_NLU_ENGINE === 'llm' ? ('llm' as const) : ('rules' as const),
     url: trimUrl(import.meta.env.VITE_NLU_URL),
+  },
+  /** AI-invented moves (Qwen). On only when the server says so (GET /api/motion → enabled). */
+  motion: {
+    url: motionApiUrl(import.meta.env.VITE_MOTION_API, import.meta.env.DEV),
+    /** Dev-only canned moves (moonwalk, backflip, lộn nhào, nháy mắt); never in a production build. */
+    mock: import.meta.env.DEV && import.meta.env.VITE_MOTION_MOCK === 'true',
+    /** The robot shows its thinking pose meanwhile; after this the move counts as failed. */
+    timeoutMs: 40_000,
   },
 } as const
