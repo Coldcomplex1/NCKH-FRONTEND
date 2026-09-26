@@ -5,6 +5,7 @@ import type { Lang } from '@/core/lang'
 import type { RenderedReply, ReplyRef } from '@/core/replies'
 import type { SpeakResult } from '@/core/speech'
 import type { WeatherData } from '@/core/weather'
+import { THINKING } from '@/motion/builtins'
 import { WeatherError } from '@/services/weather'
 import { demo, useDemo } from '@/store/demoStore'
 import { getPrefs, usePrefs } from '@/store/prefsStore'
@@ -867,5 +868,33 @@ describe('engine — robot not ready / 2D fallback (regressions)', () => {
     await vi.advanceTimersByTimeAsync(5_000)
     expect((await p).status).toBe('done')
     expect(speaker.speak).not.toHaveBeenCalled()
+  })
+})
+
+describe('engine.think (Qwen is inventing a move)', () => {
+  const MOVE = THINKING // any valid script will do
+
+  it('interrupts the current run, holds the thinking pose, and the next submit replaces it', async () => {
+    makeEngine()
+    const c = attach()
+    const first = engine.submit(request([{ type: 'dance', seconds: 30 }]))
+    await vi.advanceTimersByTimeAsync(2_000)
+    const r = request([])
+    engine.think(r.turnId)
+    expect((await first).status).toBe('interrupted')
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(c.calls.filter((x) => x.method === 'perform')).toHaveLength(1)
+    expect(c.calls.find((x) => x.method === 'perform')?.args[1]).toMatchObject({ loop: true })
+    expect(turnKeys(r.turnId)).toEqual(['ai.thinking'])
+    expect(demo().run?.status).toBe('running')
+
+    const second = engine.submit({ ...r, actions: [{ type: 'custom_move', move: MOVE, count: 1 }] })
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect((await second).status).toBe('done')
+    expect(turnKeys(r.turnId)).toEqual(['ai.thinking', 'motion.custom_move'])
+    const performs = c.calls.filter((x) => x.method === 'perform')
+    expect(performs).toHaveLength(2)
+    expect(performs[1]!.args[1]).toMatchObject({ count: 1 })
+    expect(demo().robot.activity).toBe('idle')
   })
 })

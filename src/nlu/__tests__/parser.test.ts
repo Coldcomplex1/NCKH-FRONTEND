@@ -97,8 +97,8 @@ describe('parse result details', () => {
   it('reports clauses with question and negation flags', () => {
     const r = parse('mấy giờ rồi, đừng nhảy')
     expect(r.clauses).toEqual([
-      { text: 'mấy giờ rồi', negated: false, question: false },
-      { text: 'đừng nhảy', negated: true, question: false },
+      { text: 'mấy giờ rồi', negated: false, question: false, unexplained: [], hasNegator: false },
+      { text: 'đừng nhảy', negated: true, question: false, unexplained: [], hasNegator: true },
     ])
     expect(parse('bạn khỏe không?').clauses[0]?.question).toBe(true)
   })

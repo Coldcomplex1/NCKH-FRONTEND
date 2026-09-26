@@ -25,6 +25,7 @@ const vi = {
     walking: 'đi bộ',
     running: 'chạy',
     dancing: 'nhảy múa',
+    performing: 'biểu diễn động tác mới',
   } satisfies Record<Activity, string> as Record<Activity, string>,
   posture: {
     standing: 'đứng',
@@ -60,6 +61,7 @@ const en: typeof vi = {
     walking: 'walking',
     running: 'running',
     dancing: 'dancing',
+    performing: 'performing a new move',
   },
   posture: {
     standing: 'standing',

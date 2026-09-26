@@ -59,6 +59,8 @@ const NEVER_STRIP = canonSet(['ơi'])
 /** No-diacritics spellings that are more likely a content word here (đỏ, hồng, mấy, dậy). */
 const NOT_PARTICLE_IN_ASCII = canonSet(['đó', 'đấy', 'hông', 'mày'])
 const NEGATORS = canonSet(['không', 'đừng', 'chẳng', 'chả', 'chớ', 'khỏi', 'cấm', 'hổng', 'nỏ'])
+/** No-diacritics spellings of the unambiguous negators ("dung lon nhao", "khong can"). */
+const ASCII_NEGATORS = new Set(['khong', 'dung', 'chang', 'hong'])
 /** Single-word fillers: never count as a "content" match when scoring suggestions. */
 const FILLER_WORDS = canonSet(FILLERS.filter((f) => !/[\s|[]/.test(f)))
 
@@ -272,6 +274,25 @@ function coverage(c: Tagged, consumed: ReadonlySet<Span>): number {
   return total === 0 ? 1 : covered / total
 }
 
+/** The content tokens `coverage` counts as not explained by any action, as typed. */
+function unexplained(c: Tagged, consumed: ReadonlySet<Span>): string[] {
+  const out: string[] = []
+  const spanAt = new Map<number, Span>()
+  for (const s of c.spans) for (let k = s.start; k < s.end; k++) spanAt.set(k, s)
+  for (let k = 0; k < c.toks.length; k++) {
+    if (c.math && k >= c.math.start && k < c.math.end) continue
+    const s = spanAt.get(k)
+    const t = c.toks[k]!
+    if (s) {
+      if (consumed.has(s) || NON_CONTENT.has(s.m.e.concept) || s.m.e.concept === 'NEG') continue
+      out.push(t.text)
+    } else if (!(particleOf(t, c.inp.mode) || /^\d/.test(t.text) || t.op)) {
+      out.push(t.text)
+    }
+  }
+  return out
+}
+
 function quality(d: Draft): number {
   if (d.mathRange || d.spans.length === 0) return 1
   let sum = 0
@@ -450,7 +471,15 @@ export function parseSync(text: string, ctx: ParseContext): ParseResult {
         unknown.push({ text: clauseText, clause: index, reason: 'no_match' })
     }
     scored.push(...kept)
-    clauseInfo.push({ text: clauseText, negated: kept.some((d) => d.negated === true), question: c.question })
+    clauseInfo.push({
+      text: clauseText,
+      negated: kept.some((d) => d.negated === true),
+      question: c.question,
+      unexplained: unexplained(c, out.consumed),
+      hasNegator: c.toks.some(
+        (t) => NEGATORS.has(t.text) || (c.inp.mode === 'ascii' && ASCII_NEGATORS.has(t.strip)),
+      ),
+    })
     // carry-over for the next clause (spec §6)
     carry.timer = kept.some((d) => d.action.type === 'timer_start')
     for (const d of kept) {

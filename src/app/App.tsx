@@ -2,6 +2,7 @@ import { Footer } from '@/components/layout/Footer'
 import { Header } from '@/components/layout/Header'
 import { SkipLink } from '@/components/layout/SkipLink'
 import { DemoSection } from '@/features/demo/DemoSection'
+import { prefetchMotionAi } from '@/features/demo/motionAi'
 import { prefetchParser } from '@/features/demo/pipeline'
 import { LazyResearch } from './LazyResearch'
 import { prefetchResearch } from './loadResearch'
@@ -12,6 +13,7 @@ import { useEffect } from 'react'
 export function App() {
   useEffect(() => {
     void prefetchParser()
+    prefetchMotionAi()
     prefetchResearch()
   }, [])
   return (

@@ -2,8 +2,10 @@ import { actionCategory, LIMITS, MOTION_TYPES, type Action, type ActionOf } from
 import type { Note, Suggestion } from '@/core/parser'
 import { DEFAULT_PLACE } from '@/core/places'
 import { reply, type CapInfo, type ReplyRef } from '@/core/replies'
-import type { Posture } from '@/core/robot'
+import type { Expression, Posture } from '@/core/robot'
 import type { FanSpeed, RoomState } from '@/core/room'
+import { THINKING } from '@/motion/builtins'
+import { motionSeconds, type Mood } from '@/motion/script'
 import {
   distance,
   moveAlong,
@@ -37,6 +39,13 @@ import {
   TURN_SPEED,
 } from './spec'
 import type { EmoteClip, Plan, PlannerSnapshot, Pose, Step, Vec2 } from './types'
+
+/** AI-invented moves play a little slower for viewers who prefer reduced motion. */
+export const CUSTOM_MOVE_TIME_SCALE = { normal: 1, reduced: 0.7 } as const
+/** How long the thinking pose may last (the pipeline gives up on Qwen well before this). */
+export const THINK_MAX_MS = 60_000
+
+const MOOD_EXPRESSION: Record<Mood, Expression> = { angry: 'Angry', surprised: 'Surprised', sad: 'Sad' }
 
 /**
  * The planner: a PURE function from parsed actions + a world snapshot to a list of serializable
@@ -299,6 +308,7 @@ function limitOf(b: Builder, a: Action): CapInfo | null {
     case 'shake_head':
     case 'thumbs_up':
     case 'punch':
+    case 'custom_move':
       return { action: a.type, unit: 'times', max: b.countCap }
     case 'turn':
       return a.direction === 'spin'
@@ -402,6 +412,8 @@ function motionAck(a: MotionAction): ReplyRef {
       return reply('motion.emote', { emotion: a.emotion })
     case 'stop':
       return reply('motion.stop', {})
+    case 'custom_move':
+      return reply('motion.custom_move', { name: a.move.name, count: a.count })
   }
 }
 
@@ -538,6 +550,10 @@ function planMotion(b: Builder, a: MotionAction): boolean {
       planEmote(b, a.emotion)
       return true
 
+    case 'custom_move':
+      planCustomMove(b, a)
+      return true
+
     case 'stop':
       b.emit(
         { op: 'base', clip: 'Idle', fade: 0.25 },
@@ -552,6 +568,49 @@ function planMotion(b: Builder, a: MotionAction): boolean {
       b.robot({ activity: 'idle' })
       return true
   }
+}
+
+/**
+ * An AI-invented move: stand up, face the way the move wants (a moonwalk reads best in profile),
+ * glide wherever it travels — clamped to the room — then face the viewer again.
+ */
+function planCustomMove(b: Builder, a: ActionOf<'custom_move'>): void {
+  const m = a.move
+  b.ensureStanding()
+  const yaw =
+    m.facing === 'left'
+      ? YAW_SCREEN_LEFT
+      : m.facing === 'right'
+        ? YAW_SCREEN_RIGHT
+        : m.facing === 'back'
+          ? Math.PI - 1e-6
+          : YAW_CAMERA
+  if (m.facing === 'camera') b.faceCamera()
+  else b.turnTo(yaw, { shuffle: true })
+
+  // Travel is per loop, relative to the facing: forward, and to the robot's own right.
+  const cycles = m.loops * a.count
+  const fwd = m.travel.forward * cycles
+  const side = m.travel.right * cycles
+  const heading = b.pose.yaw
+  const dx = Math.sin(heading) * fwd - Math.cos(heading) * side
+  const dz = Math.cos(heading) * fwd + Math.sin(heading) * side
+  const dist = Math.hypot(dx, dz)
+  const start = clampPoint(b.pose)
+  const to =
+    dist > 1e-3 ? moveAlong(start, Math.atan2(dx, dz), dist).to : { x: round(start.x), z: round(start.z) }
+
+  const timeScale = b.reduced ? CUSTOM_MOVE_TIME_SCALE.reduced : CUSTOM_MOVE_TIME_SCALE.normal
+  const ms = Math.round(((motionSeconds(m) * a.count) / timeScale) * 1000)
+  const mood = m.mood ? MOOD_EXPRESSION[m.mood] : null
+  b.robot({ activity: 'performing' })
+  if (mood) b.emit({ op: 'expr', name: mood, weight: 0.8, ms: 300 })
+  b.emit({ op: 'script', move: m, count: a.count, to, timeScale, ms })
+  if (mood) b.emit({ op: 'expr', name: null, ms: 400 })
+  b.robot({ activity: 'idle' })
+  b.pose.x = to.x
+  b.pose.z = to.z
+  if (m.facing !== 'camera') b.turnTo(YAW_CAMERA, { shuffle: true })
 }
 
 function planEmote(b: Builder, emotion: ActionOf<'emote'>['emotion']): void {
@@ -771,6 +830,7 @@ function clarifyReply(a: ActionOf<'clarify'>): ReplyRef {
   if (a.need === 'clock_time') return reply('timer.clock_time', label)
   if (a.need === 'device_later')
     return reply('home.later', { device: a.device ?? 'light', power: a.power ?? 'on' })
+  if (a.need === 'move_failed') return reply('ai.move_failed', {})
   return reply('timer.ask', label)
 }
 
@@ -1276,6 +1336,30 @@ export function splitForBody(req: PlanRequest): { now: PlanRequest; later: PlanR
       suggestions: [],
     },
   }
+}
+
+/**
+ * While Qwen invents a move: face the viewer, say "Để mình nghĩ động tác…" and hold the thinking
+ * pose (hand on chin) until the next submit() interrupts it. A seated robot just tilts its head.
+ */
+export function planThinking(snap: PlannerSnapshot): Plan {
+  const b = new Builder(snap)
+  b.faceCamera()
+  b.say(reply('ai.thinking', {}), false)
+  if (b.standing) {
+    b.emit({
+      op: 'script',
+      move: THINKING,
+      count: 1,
+      to: { x: round(b.pose.x), z: round(b.pose.z) },
+      timeScale: 1,
+      loop: true,
+      ms: THINK_MAX_MS,
+    })
+  } else {
+    b.emit({ op: 'head', pitch: -0.1, roll: 0.25, ms: 400 }, { op: 'hold', ms: THINK_MAX_MS })
+  }
+  return { steps: b.steps, needsBody: false, jokesUsed: 0 }
 }
 
 /** Welcome: bubble only (no TTS before the first user gesture), plus a wave. */

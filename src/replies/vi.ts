@@ -187,6 +187,18 @@ export const vi: Templates = {
     if (parts.length === 0) return 'Được!'
     return `Được! ${capFirst(joinList(parts, 'rồi'))} nè.`
   },
+  'motion.custom_move': ({ name, count }, c) => {
+    const n = safePhrase(name?.vi)
+    if (!n)
+      return count > 1
+        ? `Xem mình làm ${c.fmt.int(count)} lần nè!`
+        : c.pick(['Xem mình làm nè!', 'Được, xem nè!'])
+    return count > 1 ? `Xem mình ${n} ${c.fmt.int(count)} lần nè!` : `Xem mình ${n} nè!`
+  },
+
+  // ---- AI moves
+  'ai.thinking': (_, c) => c.pick(['Để mình nghĩ động tác đã nhé…', 'Hừm, để mình thử nghĩ xem…']),
+  'ai.move_failed': () => 'Xin lỗi, mình chưa nghĩ ra động tác này. Bạn thử lại sau nhé!',
 
   // ---- information
   'info.time': ({ iso }) => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Action } from '@/core/actions'
 import type { ReplyRef } from '@/core/replies'
 import { DEFAULT_ROOM } from '@/core/room'
+import { normalizeMotion, type MotionScript } from '@/motion/script'
 import { renderReply } from '@/replies'
 import { YAW_SCREEN_LEFT, YAW_SCREEN_RIGHT } from './bounds'
 import {
@@ -10,6 +11,7 @@ import {
   planAlarmNotice,
   plannedReplies,
   planReturnHome,
+  planThinking,
   planWelcome,
   flattenOps,
   splitForBody,
@@ -17,6 +19,17 @@ import {
 } from './planner'
 import { STEP_LENGTH, TO_USER } from './spec'
 import type { PlannerSnapshot, Step } from './types'
+
+const SAMPLE_MOVE: MotionScript = (() => {
+  const r = normalizeMotion({
+    name: { vi: 'Lộn nhào', en: 'Somersault' },
+    loops: 2,
+    duration: 1,
+    keys: [{ t: 0 }, { t: 0.5, body: { pitch: 180 } }, { t: 0.8, body: { pitch: 360 } }],
+  })
+  if (!r.ok) throw new Error(r.errors.join())
+  return r.move
+})()
 
 const snap = (over: Partial<PlannerSnapshot> = {}): PlannerSnapshot => ({
   now: new Date('2026-09-24T03:00:00Z'),
@@ -521,5 +534,96 @@ describe('planner — engine regressions', () => {
     expect(parts.later.actions).toHaveLength(5)
     expect(keys(plannedReplies(plan(parts.now, snap()).steps))[0]).toBe('note.too_many_actions')
     expect(keys(plannedReplies(plan(parts.later, snap()).steps))).not.toContain('note.too_many_actions')
+  })
+})
+
+describe('planner — AI-invented moves (custom_move)', () => {
+  const move = (over: Partial<MotionScript> = {}): MotionScript => ({ ...SAMPLE_MOVE, ...over })
+
+  it('stands up first, performs the script, and acknowledges it by name', () => {
+    const p = plan(req([{ type: 'custom_move', move: move(), count: 1 }]), snap({ posture: 'sitting' }))
+    expect(clips(p.steps)).toEqual(['Standing'])
+    const script = ofOp(p.steps, 'script')
+    expect(script).toHaveLength(1)
+    expect(script[0]).toMatchObject({ count: 1, timeScale: 1, to: { x: 0, z: 0 } })
+    expect(script[0]!.ms).toBe(Math.round(SAMPLE_MOVE.duration * SAMPLE_MOVE.loops * 1000))
+    expect(plannedReplies(p.steps)[0]).toMatchObject({
+      key: 'motion.custom_move',
+      params: { name: SAMPLE_MOVE.name, count: 1 },
+    })
+    expect(renderReply(plannedReplies(p.steps)[0]!, 'vi').text).toBe('Xem mình Lộn nhào nè!')
+    expect(p.needsBody).toBe(true)
+    // performing while it runs, idle after
+    expect(
+      ofOp(p.steps, 'robot')
+        .map((s) => s.patch.activity)
+        .filter(Boolean),
+    ).toEqual(['performing', 'idle'])
+  })
+
+  it('turns to face the way the move wants (profile), travels, then faces the viewer again', () => {
+    const p = plan(
+      req([
+        {
+          type: 'custom_move',
+          move: move({ facing: 'right', travel: { forward: -0.4, right: 0 } }),
+          count: 1,
+        },
+      ]),
+      snap(),
+    )
+    const turns = ofOp(p.steps, 'turn').map((t) => t.yaw)
+    expect(turns[0]).toBeCloseTo(YAW_SCREEN_RIGHT)
+    expect(turns[turns.length - 1]).toBeCloseTo(0)
+    // facing screen-right and moving backward = toward screen-left (−X), 2 loops × 0.4 m
+    expect(ofOp(p.steps, 'script')[0]!.to).toEqual({ x: -0.8, z: 0 })
+  })
+
+  it('never travels through a wall', () => {
+    const p = plan(
+      req([{ type: 'custom_move', move: move({ travel: { forward: 1.5, right: 0 } }), count: 3 }]),
+      snap({ pose: { x: 0, z: 1.8, yaw: 0 } }),
+    )
+    expect(ofOp(p.steps, 'script')[0]!.to.z).toBeLessThanOrEqual(2.0)
+  })
+
+  it('reduced motion: slower, and at most 3 performances', () => {
+    const p = plan(req([{ type: 'custom_move', move: move(), count: 8 }]), snap({ reducedMotion: true }))
+    const s = ofOp(p.steps, 'script')[0]!
+    expect(s.count).toBe(3)
+    expect(s.timeScale).toBe(0.7)
+    expect(keys(plannedReplies(p.steps))[0]).toBe('note.capped')
+  })
+
+  it('wraps the move in its mood', () => {
+    const p = plan(req([{ type: 'custom_move', move: move({ mood: 'angry' }), count: 1 }]), snap())
+    const ops = flattenOps(p.steps)
+    const exprs = ofOp(p.steps, 'expr').map((e) => e.name)
+    expect(exprs).toEqual(['Angry', null])
+    expect(ops.indexOf('expr')).toBeLessThan(ops.indexOf('script'))
+  })
+
+  it('clarify move_failed says Qwen could not work it out', () => {
+    const p = plan(req([{ type: 'clarify', need: 'move_failed' }]), snap())
+    expect(keys(plannedReplies(p.steps))).toEqual(['ai.move_failed'])
+  })
+})
+
+describe('planner — thinking pose while Qwen works', () => {
+  it('standing: faces the viewer, says it is thinking, loops the thinking pose', () => {
+    const p = planThinking(snap({ pose: { x: 1, z: 0.5, yaw: YAW_SCREEN_LEFT } }))
+    expect(ofOp(p.steps, 'turn').at(-1)?.yaw).toBeCloseTo(0)
+    expect(keys(plannedReplies(p.steps))).toEqual(['ai.thinking'])
+    const s = ofOp(p.steps, 'script')[0]!
+    expect(s).toMatchObject({ loop: true, to: { x: 1, z: 0.5 } })
+    expect(s.move.name?.en).toBe('Thinking')
+    expect(p.needsBody).toBe(false)
+  })
+
+  it('seated: only tilts the head (no standing up to think)', () => {
+    const p = planThinking(snap({ posture: 'sitting' }))
+    expect(ofOp(p.steps, 'script')).toHaveLength(0)
+    expect(clips(p.steps)).toEqual([])
+    expect(ofOp(p.steps, 'head')).toHaveLength(1)
   })
 })

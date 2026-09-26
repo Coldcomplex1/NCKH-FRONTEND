@@ -10,6 +10,10 @@ interface ImportMetaEnv {
   /** Command parser engine: "rules" (default) or "llm" (future Qwen parser). */
   readonly VITE_NLU_ENGINE?: string
   readonly VITE_NLU_URL?: string
+  /** AI moves (Qwen) endpoint; default "/api/motion" (the Vercel function on the same site). */
+  readonly VITE_MOTION_API?: string
+  /** Dev only: canned AI moves without a Qwen key. */
+  readonly VITE_MOTION_MOCK?: string
 }
 
 interface ImportMeta {

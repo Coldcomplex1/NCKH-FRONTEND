@@ -9,7 +9,7 @@ import type { ExampleCategory, ExampleTag } from './input-panel/examples'
 const bot = project.botName
 
 type TranscriptStatus =
-  'hearing' | 'thinking' | 'ok' | 'partial' | 'impossible' | 'unknown' | 'error' | 'interrupted'
+  'hearing' | 'thinking' | 'creating' | 'ok' | 'partial' | 'impossible' | 'unknown' | 'error' | 'interrupted'
 
 const vi = {
   section: {
@@ -175,6 +175,7 @@ const vi = {
     status: {
       hearing: 'Đang nghe',
       thinking: 'Đang hiểu',
+      creating: 'Qwen đang nghĩ động tác…',
       ok: 'Đã hiểu',
       partial: 'Hiểu một phần',
       impossible: 'Không làm được',
@@ -203,6 +204,13 @@ const vi = {
     replies: `${bot} trả lời`,
     means: 'nghĩa là',
     order: (n: number): string => `Bước ${n}`,
+    aiBadge: 'Qwen tạo động tác',
+    aiBadgeShort: 'Qwen',
+  },
+
+  ai: {
+    disclosure: 'Lệnh robot chưa biết sẽ được gửi tới Qwen (Alibaba Cloud) để nghĩ ra động tác mới.',
+    heading: 'Động tác mới do Qwen nghĩ ra',
   },
 
   regions: {
@@ -412,6 +420,7 @@ const en: typeof vi = {
     status: {
       hearing: 'Listening',
       thinking: 'Understanding',
+      creating: 'Qwen is inventing a move…',
       ok: 'Understood',
       partial: 'Partly understood',
       impossible: "Can't do that",
@@ -440,6 +449,13 @@ const en: typeof vi = {
     replies: `${bot} replied`,
     means: 'means',
     order: (n) => `Step ${n}`,
+    aiBadge: 'Made by Qwen',
+    aiBadgeShort: 'Qwen',
+  },
+
+  ai: {
+    disclosure: "Commands the robot doesn't know are sent to Qwen (Alibaba Cloud) to invent a new move.",
+    heading: 'New moves invented by Qwen',
   },
 
   regions: {

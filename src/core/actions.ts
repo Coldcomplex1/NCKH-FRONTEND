@@ -1,3 +1,4 @@
+import type { MotionScript } from '@/motion/script'
 import type { ColorId } from './colors'
 import type { Bilingual, Lang } from './lang'
 import type { PlaceRef } from './places'
@@ -42,6 +43,11 @@ export type Action =
   | { type: 'fall' }
   | { type: 'emote'; emotion: Emotion }
   | { type: 'stop' }
+  /**
+   * A move Qwen invented for a command the robot has no built-in animation for (source 'llm').
+   * `move.name` is the filtered display name; `count` = how many times the whole move is performed.
+   */
+  | { type: 'custom_move'; move: MotionScript; count: number }
   // ---- information
   | { type: 'time' }
   | { type: 'date'; dayOffset: DayOffset }
@@ -110,12 +116,13 @@ export type Action =
    * Understood, but it cannot run as said, so the robot asks or explains (never a refusal):
    * 'timer_duration' = a reminder/timer without a duration ("nhắc tôi uống thuốc"),
    * 'clock_time' = an alarm at a clock time ("lúc 9 giờ", not supported yet),
-   * 'device_later' = a delayed lamp/fan command ("tắt đèn sau 5 phút", not supported yet).
+   * 'device_later' = a delayed lamp/fan command ("tắt đèn sau 5 phút", not supported yet),
+   * 'move_failed' = Qwen could not invent the move asked for (timeout, error): "try again later".
    * `label` is a whitelisted reminder label (TIMER_LABELS), never free text.
    */
   | {
       type: 'clarify'
-      need: 'timer_duration' | 'clock_time' | 'device_later'
+      need: 'timer_duration' | 'clock_time' | 'device_later' | 'move_failed'
       label?: string
       device?: 'light' | 'fan'
       power?: 'on' | 'off'
@@ -144,6 +151,7 @@ export const MOTION_TYPES = [
   'fall',
   'emote',
   'stop',
+  'custom_move',
 ] as const satisfies readonly ActionType[]
 
 export const INFO_TYPES = [

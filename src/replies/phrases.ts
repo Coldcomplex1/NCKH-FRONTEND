@@ -1,6 +1,7 @@
 import type { Action, ActionType } from '@/core/actions'
 import type { Lang } from '@/core/lang'
 import type { Fmt } from '@/i18n/format'
+import { safePhrase } from './shared'
 
 /** Bare verb phrase per action type, for "mình sẽ không {verb}" / "But I can {verb}!". */
 export const ACTION_VERB: Record<Lang, Record<ActionType, string>> = {
@@ -22,6 +23,7 @@ export const ACTION_VERB: Record<Lang, Record<ActionType, string>> = {
     fall: 'giả vờ ngã',
     emote: 'làm mặt cười',
     stop: 'dừng lại',
+    custom_move: 'làm động tác mới',
     time: 'xem giờ',
     date: 'xem ngày',
     weekday: 'xem thứ',
@@ -67,6 +69,7 @@ export const ACTION_VERB: Record<Lang, Record<ActionType, string>> = {
     fall: 'play dead',
     emote: 'make a funny face',
     stop: 'stop',
+    custom_move: 'do a new move',
     time: 'tell the time',
     date: 'tell the date',
     weekday: 'tell the day of the week',
@@ -97,6 +100,13 @@ export const ACTION_VERB: Record<Lang, Record<ActionType, string>> = {
 }
 
 const times = (n: number) => n > 1
+
+/** "Lộn nhào" → "lộn nhào" inside a sentence; leaves "MJ moonwalk" (an acronym) alone. */
+function lowerFirst(s: string, lang: Lang): string {
+  const second = s.charAt(1)
+  if (second && second === second.toLocaleUpperCase(lang === 'vi' ? 'vi-VN' : 'en-US')) return s
+  return s.charAt(0).toLocaleLowerCase(lang === 'vi' ? 'vi-VN' : 'en-US') + s.slice(1)
+}
 
 /** Short phrase for one step of a motion chain: VI "nhảy 3 lần", EN "jumping 3 times". */
 export function chainPhrase(a: Action, lang: Lang, fmt: Fmt): string {
@@ -166,6 +176,11 @@ export function chainPhrase(a: Action, lang: Lang, fmt: Fmt): string {
         }[a.emotion]
       case 'stop':
         return 'dừng lại'
+      case 'custom_move': {
+        const name = safePhrase(a.move.name?.vi)
+        const what = name ? lowerFirst(name, 'vi') : 'làm động tác mới'
+        return times(a.count) ? `${what} ${n(a.count)} lần` : what
+      }
       default:
         return ACTION_VERB.vi[a.type]
     }
@@ -236,6 +251,11 @@ export function chainPhrase(a: Action, lang: Lang, fmt: Fmt): string {
       }[a.emotion]
     case 'stop':
       return 'stopping'
+    case 'custom_move': {
+      const name = safePhrase(a.move.name?.en)
+      const what = name ? `doing the ${lowerFirst(name, 'en')}` : 'doing a new move'
+      return times(a.count) ? `${what} ${n(a.count)} times` : what
+    }
     default:
       return ACTION_VERB.en[a.type]
   }

@@ -16,12 +16,16 @@ import type {
   ClipName,
   LoopClip,
   OnceClip,
+  PerformOptions,
   PlayOptions,
   Pose,
   PoseClip,
   Vec2,
 } from '@/engine/types'
+import type { MotionScript } from '@/motion/script'
 import { clamp, easeInOutCubic, normalizeAngle, shortestDelta, trapezoidProgress } from './math'
+import { compileMotion, type CompiledMotion } from './motionCompiler'
+import type { MotionRig } from './motionRig'
 
 /**
  * The AnimationController for the 3D robot (three.js). Created by <Robot/> once the model is
@@ -39,6 +43,8 @@ export interface ThreeControllerDeps {
   model: Object3D
   faceMeshes: Mesh[]
   headBone: Object3D | null
+  /** Rest rig for AI-invented moves (null/absent: `perform` does nothing). */
+  rig?: MotionRig | null
 }
 
 export interface ThreeController extends AnimationController {
@@ -60,6 +66,13 @@ const MOVE_RAMP = 0.3
 /** Extra controller seconds before a lost `finished` event is assumed. */
 const WATCHDOG_SLACK = 1
 const POSE_CLIPS = new Set<OnceClip>(['Sitting', 'Standing', 'Death'])
+/** Crossfade into and out of an AI-invented move. */
+const CUSTOM_FADE = 0.3
+
+/** A one-shot is a named clip, or 'custom' for a compiled MotionScript. */
+type ShotClip = OnceClip | 'custom'
+const holds = (c: ShotClip) => c !== 'custom' && HOLD_CLIPS.has(c)
+const isPose = (c: ShotClip) => c !== 'custom' && POSE_CLIPS.has(c)
 
 type Resolve = () => void
 
@@ -71,7 +84,7 @@ interface Tween {
 }
 
 interface OneShot {
-  clip: OnceClip
+  clip: ShotClip
   action: AnimationAction
   deadline: number
   resolve: Resolve | null
@@ -79,6 +92,7 @@ interface OneShot {
 
 export function createThreeController(deps: ThreeControllerDeps): ThreeController {
   const { mixer, clips, root, model, faceMeshes, headBone } = deps
+  const rig = deps.rig ?? null
 
   let time = 0
   let disposed = false
@@ -97,8 +111,23 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
   /** A pose clip that finished and holds its last frame (Sitting / Death). */
   let held: AnimationAction | null = null
 
+  // ---- AI-invented moves: compiled once per script, their actions retired once faded out
+  const compiled = new WeakMap<MotionScript, CompiledMotion>()
+  const customActions = new Set<AnimationAction>()
+  const retired = new Set<AnimationAction>()
+
+  function uncache(a: AnimationAction): void {
+    const clip = a.getClip()
+    customActions.delete(a)
+    retired.delete(a)
+    mixer.uncacheAction(clip)
+    mixer.uncacheClip(clip)
+  }
+
   function fadeTo(next: AnimationAction, fade: number, timeScale: number): void {
     const prev = active
+    if (prev && prev !== next && customActions.has(prev)) retired.add(prev)
+    retired.delete(next)
     next.reset().setEffectiveTimeScale(timeScale).setEffectiveWeight(1)
     // Replaying the active action restarts it at full weight: fading it in from 0 with nothing
     // else weighted would blend toward the bind pose for a moment.
@@ -124,7 +153,7 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
     const shot = oneShot
     if (!shot) return
     oneShot = null
-    if (HOLD_CLIPS.has(shot.clip)) {
+    if (holds(shot.clip)) {
       held = shot.action
       active = shot.action
     } else {
@@ -146,7 +175,7 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
   }
 
   // ---- tweens (one per channel; a new call supersedes and resolves the previous one)
-  let move: Tween | null = null
+  let moveTween: Tween | null = null
   let turn: Tween | null = null
   let exprTween: Tween | null = null
   let headTween: Tween | null = null
@@ -300,7 +329,10 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       }
       // Straight to the last frame, full weight, no crossfade: the same state a finished Sitting /
       // Death one-shot leaves behind (held, clamped), so Standing releases it as usual.
-      if (active && active !== action) active.stop()
+      if (active && active !== action) {
+        if (customActions.has(active)) uncache(active)
+        else active.stop()
+      }
       action.reset()
       action.setLoop(LoopOnce, 1)
       action.clampWhenFinished = true
@@ -356,12 +388,12 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
 
     moveTo(target: Vec2, opts: { speed: number }): Promise<void> {
       if (disposed) return Promise.resolve()
-      supersede(move)
+      supersede(moveTween)
       const fromX = root.position.x
       const fromZ = root.position.z
       const dist = Math.hypot(target.x - fromX, target.z - fromZ)
       if (dist < 1e-3) {
-        move = null
+        moveTween = null
         return Promise.resolve()
       }
       const cruise = dist / Math.max(0.05, opts.speed)
@@ -375,7 +407,7 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
         },
         true,
       )
-      move = tween
+      moveTween = tween
       return promise
     },
 
@@ -403,6 +435,61 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       return promise
     },
 
+    perform(move: MotionScript, opts: PerformOptions): Promise<void> {
+      if (disposed || !rig) return Promise.resolve()
+      let c = compiled.get(move)
+      if (!c) {
+        try {
+          c = compileMotion(rig, move)
+        } catch (err) {
+          console.error('[robot] could not compile the move', err)
+          return Promise.resolve()
+        }
+        compiled.set(move, c)
+      }
+      const action = mixer.clipAction(c.clip)
+      customActions.add(action)
+      if (oneShot) {
+        const prev = oneShot
+        oneShot = null
+        prev.resolve?.()
+      }
+      const loop = opts.loop === true
+      const cycles = loop ? Infinity : Math.max(1, move.loops * Math.max(1, Math.round(opts.count)))
+      const ts = opts.timeScale ?? 1
+      action.setLoop(cycles > 1 ? LoopRepeat : LoopOnce, cycles)
+      action.clampWhenFinished = true
+      held = null
+      fadeTo(action, CUSTOM_FADE, ts)
+      const expected = loop ? Infinity : (c.loopSeconds * cycles) / Math.max(0.05, Math.abs(ts))
+      if (!loop) {
+        // Glide the root to the (clamped) end point over the performance: moonwalks, rolls…
+        supersede(moveTween)
+        const fromX = root.position.x
+        const fromZ = root.position.z
+        const { x, z } = opts.to
+        if (Math.hypot(x - fromX, z - fromZ) > 1e-3) {
+          const { tween } = startTween(
+            expected,
+            (k) => {
+              root.position.x = fromX + (x - fromX) * k
+              root.position.z = fromZ + (z - fromZ) * k
+            },
+            false,
+          )
+          moveTween = tween
+        } else moveTween = null
+      }
+      return new Promise<void>((resolve) => {
+        oneShot = {
+          clip: 'custom',
+          action,
+          deadline: time + expected + CUSTOM_FADE + WATCHDOG_SLACK,
+          resolve,
+        }
+      })
+    },
+
     wait(ms: number): Promise<void> {
       if (disposed || ms <= 0) return Promise.resolve()
       return new Promise<void>((resolve) => waits.push({ until: time + ms / 1000, resolve }))
@@ -423,8 +510,8 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       if (disposed) return
       const fade = Math.max(0, opts.fade ?? CANCEL_FADE)
       // Tweens stop where they are.
-      for (const t of [move, turn, exprTween, headTween]) t?.resolve?.()
-      move = turn = exprTween = headTween = null
+      for (const t of [moveTween, turn, exprTween, headTween]) t?.resolve?.()
+      moveTween = turn = exprTween = headTween = null
       resolveWaits(true)
       // An emote fades out now; a pose clip (sit / stand / fall) finishes, so the body matches the
       // posture the engine already recorded. Held poses are kept.
@@ -432,7 +519,7 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       if (shot) {
         shot.resolve?.()
         shot.resolve = null
-        if (!POSE_CLIPS.has(shot.clip)) oneShot = null
+        if (!isPose(shot.clip)) oneShot = null
       }
       // Moving loops make no sense without the move: back to Idle unless a pose holds / plays.
       base = 'Idle'
@@ -449,7 +536,7 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       undoHeadOverlay()
       mixer.update(dt)
       time += dt
-      move = stepTween(move)
+      moveTween = stepTween(moveTween)
       turn = stepTween(turn)
       exprTween = stepTween(exprTween)
       headTween = stepTween(headTween)
@@ -457,6 +544,8 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       writeExpressions()
       if (oneShot && time >= oneShot.deadline) finishOneShot()
       resolveWaits(false)
+      // Faded-out custom moves: drop their actions (restores the root bone and the face targets).
+      for (const a of retired) if (a !== active && a.getEffectiveWeight() === 0) uncache(a)
     },
 
     dispose(): void {
@@ -472,6 +561,7 @@ export function createThreeController(deps: ThreeControllerDeps): ThreeControlle
       headState.pitch = headState.roll = headState.yaw = 0
       for (const n of EXPRESSIONS) exprWeights[n] = 0
       writeExpressions()
+      for (const a of [...customActions]) uncache(a)
       mixer.stopAllAction()
       mixer.uncacheRoot(model)
     },

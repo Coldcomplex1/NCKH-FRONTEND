@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, WandSparkles } from 'lucide-react'
 import { Fragment } from 'react'
 import type { ActionCategory } from '@/core/actions'
 import type { ParsedAction } from '@/core/parser'
@@ -62,6 +62,12 @@ export function IntentChips({ actions, compact = false }: { actions: ParsedActio
               {v.detail ? <span className="text-muted">· {v.detail}</span> : null}
               {v.count !== undefined && v.count > 1 ? (
                 <span className="font-bold tabular-nums">×{fmt.int(v.count)}</span>
+              ) : null}
+              {pa.source === 'llm' && pa.action.type === 'custom_move' ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-ink px-2 py-0.5 text-xs font-bold text-surface">
+                  <WandSparkles aria-hidden="true" className="size-3.5" />
+                  {compact ? t.aiBadgeShort : t.aiBadge}
+                </span>
               ) : null}
             </li>
           </Fragment>

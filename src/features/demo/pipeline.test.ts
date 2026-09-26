@@ -7,9 +7,13 @@ import { INITIAL_STAGES, useDemo } from '@/store/demoStore'
 const mocks = vi.hoisted(() => ({
   parse: vi.fn(),
   submit: vi.fn(),
+  think: vi.fn(),
   prime: vi.fn(),
   transcribe: vi.fn(),
   toWav16k: vi.fn(),
+  aiAvailable: vi.fn(),
+  cachedMove: vi.fn(),
+  requestMove: vi.fn(),
 }))
 
 vi.mock('@/nlu', () => ({
@@ -21,6 +25,7 @@ vi.mock('@/nlu', () => ({
 vi.mock('@/engine', () => ({
   engine: {
     submit: (req: EngineRequest) => mocks.submit(req),
+    think: (turnId: string) => mocks.think(turnId),
     interrupt: () => {},
     cancelTimer: () => {},
     returnHome: () => {},
@@ -47,8 +52,14 @@ vi.mock('@/audio/asrClient', async (importOriginal) => ({
   transcribe: (...args: unknown[]) => mocks.transcribe(...args),
 }))
 vi.mock('@/audio/decode', () => ({ toWav16k: (...args: unknown[]) => mocks.toWav16k(...args) }))
+vi.mock('./motionAi', () => ({
+  motionAiAvailable: () => mocks.aiAvailable(),
+  cachedMove: (...args: unknown[]) => mocks.cachedMove(...args),
+  requestMove: (...args: unknown[]) => mocks.requestMove(...args),
+}))
 
 const { AsrError } = await import('@/audio/asrClient')
+const { THINKING: BUILTIN_THINKING } = await import('@/motion/builtins')
 const { buildParseContext, DUPLICATE_WINDOW_MS, prefetchParser, resetPipeline, submitAudio, submitCommand } =
   await import('./pipeline')
 // The parser is a lazy chunk; the app prefetches it after first paint, so tests start with it loaded.
@@ -99,6 +110,10 @@ beforeEach(() => {
   useDemo.setState({ turns: [], stages: { ...INITIAL_STAGES }, lastActions: [], live: null, bubble: null })
   mocks.parse.mockImplementation(async (text: string) => result(text, [{ type: 'jump', count: 1 }]))
   mocks.submit.mockImplementation(async () => done)
+  mocks.think.mockImplementation(() => {})
+  mocks.aiAvailable.mockImplementation(async () => true)
+  mocks.cachedMove.mockImplementation(() => null)
+  mocks.requestMove.mockImplementation(async () => ({ kind: 'not_motion' }))
   mocks.prime.mockImplementation(() => {})
   mocks.toWav16k.mockImplementation(async (blob: Blob) => ({
     blob,
@@ -341,5 +356,90 @@ describe('submitAudio', () => {
     await expect(p).resolves.toMatchObject({ status: 'interrupted' })
     expect(settled).toHaveBeenCalledWith({ ok: false, cancelled: true })
     expect(useDemo.getState().stages.asr).toBe('idle')
+  })
+})
+
+describe('AI moves (Qwen)', () => {
+  const THINKING = BUILTIN_THINKING
+
+  /** "lộn nhào đi": nothing the rules can do. */
+  const unknownRoll = (text: string) =>
+    result(text, [], {
+      clauses: [{ text, negated: false, question: false, unexplained: ['lộn', 'nhào'], hasNegator: false }],
+      unknown: [{ text, clause: 0, reason: 'no_match' }],
+      status: 'unknown',
+    })
+
+  it('holds the thinking pose while Qwen invents the move, then performs it', async () => {
+    mocks.parse.mockImplementation(async (text: string) => unknownRoll(text))
+    const move = deferred<unknown>()
+    mocks.requestMove.mockImplementation(() => move.promise)
+    const p = submitCommand('lộn nhào đi')
+    await flush()
+    const turnId = useDemo.getState().turns[0]!.id
+    expect(mocks.think).toHaveBeenCalledWith(turnId)
+    expect(useDemo.getState().turns[0]!.creating).toBe(true)
+    expect(useDemo.getState().stages.nlu).toBe('active')
+    expect(mocks.submit).not.toHaveBeenCalled()
+    expect(mocks.requestMove.mock.calls[0]![0]).toMatchObject({ kind: 'unknown', text: 'lộn nhào đi' })
+
+    move.resolve({ kind: 'move', move: THINKING })
+    await p
+    const req = mocks.submit.mock.calls[0]![0] as EngineRequest
+    expect(req.actions).toEqual([{ type: 'custom_move', move: THINKING, count: 1 }])
+    expect(req.hasUnknown).toBe(false)
+    const turn = useDemo.getState().turns[0]!
+    expect(turn.creating).toBe(false)
+    expect(turn.parse?.actions[0]?.source).toBe('llm')
+    expect(useDemo.getState().lastActions).toEqual(req.actions)
+  })
+
+  it('a move this browser already has plays at once (no thinking pose)', async () => {
+    mocks.parse.mockImplementation(async (text: string) => unknownRoll(text))
+    mocks.cachedMove.mockImplementation(() => ({ kind: 'move', move: THINKING }))
+    await submitCommand('lộn nhào đi')
+    expect(mocks.think).not.toHaveBeenCalled()
+    expect(mocks.requestMove).not.toHaveBeenCalled()
+    expect((mocks.submit.mock.calls[0]![0] as EngineRequest).actions[0]!.type).toBe('custom_move')
+  })
+
+  it('off (no key on this site): exactly the old behaviour', async () => {
+    mocks.parse.mockImplementation(async (text: string) => unknownRoll(text))
+    mocks.aiAvailable.mockImplementation(async () => false)
+    await submitCommand('lộn nhào đi')
+    expect(mocks.think).not.toHaveBeenCalled()
+    const req = mocks.submit.mock.calls[0]![0] as EngineRequest
+    expect(req.actions).toEqual([])
+    expect(req.hasUnknown).toBe(true)
+  })
+
+  it('Qwen failing: the robot says it could not work the move out', async () => {
+    mocks.parse.mockImplementation(async (text: string) => unknownRoll(text))
+    mocks.requestMove.mockImplementation(async () => ({ kind: 'error', reason: 'timeout' }))
+    await submitCommand('lộn nhào đi')
+    expect((mocks.submit.mock.calls[0]![0] as EngineRequest).actions).toEqual([
+      { type: 'clarify', need: 'move_failed' },
+    ])
+  })
+
+  it('a new command while Qwen works supersedes the old turn (it never acts)', async () => {
+    mocks.parse.mockImplementation(async (text: string) =>
+      text === 'lộn nhào đi' ? unknownRoll(text) : result(text, [{ type: 'wave', count: 1 }]),
+    )
+    const slow = deferred<unknown>()
+    mocks.requestMove.mockImplementation((_e: unknown, opts: { signal: AbortSignal }) => {
+      opts.signal.addEventListener('abort', () => slow.resolve({ kind: 'error', reason: 'aborted' }))
+      return slow.promise
+    })
+    const first = submitCommand('lộn nhào đi')
+    await flush()
+    const second = submitCommand('vẫy tay')
+    expect((await first).status).toBe('interrupted')
+    await second
+    expect(mocks.submit).toHaveBeenCalledTimes(1)
+    expect((mocks.submit.mock.calls[0]![0] as EngineRequest).actions[0]!.type).toBe('wave')
+    const old = useDemo.getState().turns[1]!
+    expect(old.status).toBe('interrupted')
+    expect(old.creating).toBe(false)
   })
 })

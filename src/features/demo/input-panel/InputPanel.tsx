@@ -1,5 +1,9 @@
+import { WandSparkles } from 'lucide-react'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { useDict } from '@/i18n'
 import { ENV } from '@/lib/env'
+import { useDemo } from '@/store/demoStore'
+import { demoDict } from '../dict'
 import { ExampleChips } from './ExampleChips'
 import { HistoryLog } from './HistoryLog'
 import { COMMAND_INPUT_ID, panelId, tabId, type InputTab } from '../ids'
@@ -21,6 +25,8 @@ const AUDIO_LIVE = ENV.asr.enabled || ENV.asr.mock
 export function InputPanel() {
   const [tab, setTab] = useState<InputTab>('text')
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const aiOn = useDemo((s) => s.aiMoves === 'on')
+  const t = useDict(demoDict)
 
   const switchToText = () => {
     setTab('text')
@@ -54,6 +60,12 @@ export function InputPanel() {
       >
         <div className="rounded-xl border-2 border-ink bg-surface p-4 shadow-pop sm:p-5">
           <TextComposer inputRef={inputRef} />
+          {aiOn ? (
+            <p className="mt-3 flex items-start gap-2 text-sm text-muted">
+              <WandSparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+              {t.ai.disclosure}
+            </p>
+          ) : null}
         </div>
         <ExampleChips />
       </div>

@@ -79,5 +79,18 @@ export const EXAMPLE_GROUPS: ExampleGroup[] = [
   },
 ]
 
+/**
+ * Commands for AI-invented moves (Qwen): shown only when the site has the feature on. The rules do
+ * NOT understand these (that is the point), so they are not part of ALL_EXAMPLES; the router tests
+ * check that every one of them goes to the AI.
+ */
+export const AI_EXAMPLES: ExampleChip[] = [
+  { vi: 'moonwalk đi', en: 'do the moonwalk' },
+  { vi: 'lộn nhào đi', en: 'do a somersault' },
+  { vi: 'nhắm một mắt đi', en: 'close one eye' },
+  { vi: 'đi như con cua', en: 'walk like a crab' },
+  { vi: 'giơ hai tay lên', en: 'raise both hands' },
+]
+
 /** Flat list of every example command (tests, suggestions). */
 export const ALL_EXAMPLES: string[] = EXAMPLE_GROUPS.flatMap((g) => g.chips.map((c) => c.vi))
