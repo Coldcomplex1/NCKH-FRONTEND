@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   aiAvailable: vi.fn(),
   cachedMove: vi.fn(),
   requestMove: vi.fn(),
+  correctAvailable: vi.fn(),
+  requestCorrection: vi.fn(),
 }))
 
 vi.mock('@/nlu', () => ({
@@ -57,11 +59,22 @@ vi.mock('./motionAi', () => ({
   cachedMove: (...args: unknown[]) => mocks.cachedMove(...args),
   requestMove: (...args: unknown[]) => mocks.requestMove(...args),
 }))
+vi.mock('./correctAi', () => ({
+  correctionAvailable: () => mocks.correctAvailable(),
+  requestCorrection: (...args: unknown[]) => mocks.requestCorrection(...args),
+}))
 
 const { AsrError } = await import('@/audio/asrClient')
 const { THINKING: BUILTIN_THINKING } = await import('@/motion/builtins')
-const { buildParseContext, DUPLICATE_WINDOW_MS, prefetchParser, resetPipeline, submitAudio, submitCommand } =
-  await import('./pipeline')
+const {
+  buildParseContext,
+  DUPLICATE_WINDOW_MS,
+  needsTypedFix,
+  prefetchParser,
+  resetPipeline,
+  submitAudio,
+  submitCommand,
+} = await import('./pipeline')
 // The parser is a lazy chunk; the app prefetches it after first paint, so tests start with it loaded.
 await prefetchParser()
 
@@ -107,7 +120,20 @@ const flush = () => new Promise((r) => setTimeout(r, 0))
 
 beforeEach(() => {
   resetPipeline()
-  useDemo.setState({ turns: [], stages: { ...INITIAL_STAGES }, lastActions: [], live: null, bubble: null })
+  useDemo.setState({
+    turns: [],
+    stages: { ...INITIAL_STAGES },
+    lastActions: [],
+    live: null,
+    bubble: null,
+    correction: 'unknown',
+  })
+  mocks.correctAvailable.mockImplementation(async () => false)
+  mocks.requestCorrection.mockImplementation(async (text: string) => ({
+    kind: 'ok',
+    corrected: text,
+    changed: false,
+  }))
   mocks.parse.mockImplementation(async (text: string) => result(text, [{ type: 'jump', count: 1 }]))
   mocks.submit.mockImplementation(async () => done)
   mocks.think.mockImplementation(() => {})
@@ -441,5 +467,137 @@ describe('AI moves (Qwen)', () => {
     const old = useDemo.getState().turns[1]!
     expect(old.status).toBe('interrupted')
     expect(old.creating).toBe(false)
+  })
+})
+
+describe('Qwen post-correction', () => {
+  const audio = () => new Blob([new Uint8Array(32)], { type: 'audio/webm' })
+  const on = () => {
+    useDemo.setState({ correction: 'on' })
+    mocks.correctAvailable.mockImplementation(async () => true)
+  }
+
+  it('corrects the ASR transcript and acts on the correction', async () => {
+    on()
+    mocks.transcribe.mockImplementation(async () => ({ text: 'Nhảy ba lần rồi vây tay.', duration: 2 }))
+    mocks.requestCorrection.mockImplementation(async () => ({
+      kind: 'ok',
+      corrected: 'Nhảy ba lần rồi vẫy tay.',
+      changed: true,
+    }))
+    const settled = vi.fn()
+    await submitAudio(audio(), 'mic', { onAsrSettled: settled })
+
+    expect(mocks.requestCorrection).toHaveBeenCalledWith(
+      'Nhảy ba lần rồi vây tay.',
+      'asr',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    const turn = useDemo.getState().turns[0]!
+    expect(turn.heard).toBe('Nhảy ba lần rồi vẫy tay.')
+    expect(turn.asr).toMatchObject({ raw: 'Nhảy ba lần rồi vây tay.', corrected: 'Nhảy ba lần rồi vẫy tay.' })
+    expect(turn.correcting).toBe(false)
+    expect(mocks.parse.mock.calls[0]![0]).toBe('Nhảy ba lần rồi vẫy tay.')
+    expect(useDemo.getState().stages).toMatchObject({ asr: 'done', qwen: 'done', robot: 'done' })
+    expect(settled).toHaveBeenCalledWith({ ok: true })
+  })
+
+  it('shows Qwen "done" with a single line when there was nothing to fix', async () => {
+    on()
+    mocks.transcribe.mockImplementation(async () => ({ text: 'Chừ mấy giờ rồi rứa.' }))
+    await submitAudio(audio(), 'file')
+    const turn = useDemo.getState().turns[0]!
+    expect(turn.heard).toBe('Chừ mấy giờ rồi rứa.')
+    expect(turn.asr?.corrected).toBeUndefined()
+    expect(useDemo.getState().stages.qwen).toBe('done')
+  })
+
+  it('a failed correction does not stop the robot: it acts on the raw transcript', async () => {
+    on()
+    mocks.transcribe.mockImplementation(async () => ({ text: 'bật đèn lên' }))
+    mocks.requestCorrection.mockImplementation(async () => ({ kind: 'error', reason: 'timeout' }))
+    await expect(submitAudio(audio(), 'mic')).resolves.toMatchObject({ status: 'done' })
+    expect(mocks.parse.mock.calls[0]![0]).toBe('bật đèn lên')
+    expect(useDemo.getState().stages).toMatchObject({ qwen: 'error', robot: 'done' })
+  })
+
+  it('never calls Qwen when the site has no correction step (stage stays "sắp có")', async () => {
+    mocks.transcribe.mockImplementation(async () => ({ text: 'nhảy lên' }))
+    await submitAudio(audio(), 'mic')
+    await submitCommand('nhay len')
+    expect(mocks.requestCorrection).not.toHaveBeenCalled()
+    expect(useDemo.getState().stages.qwen).toBe('soon')
+  })
+
+  it('typed text without diacritics is corrected, and the robot acts on the correction', async () => {
+    on()
+    mocks.parse.mockImplementation(async (text: string) =>
+      result(text, [{ type: 'jump', count: 1 }], {
+        inputMode: /[ạ-ỹà-ýđ]/iu.test(text) ? 'accented' : 'ascii',
+      }),
+    )
+    mocks.requestCorrection.mockImplementation(async () => ({
+      kind: 'ok',
+      corrected: 'nhảy lên đi',
+      changed: true,
+    }))
+    const p = submitCommand('nhay len di')
+    expect(useDemo.getState().stages.qwen).toBe('skipped')
+    await p
+    expect(mocks.requestCorrection).toHaveBeenCalledWith('nhay len di', 'text', expect.anything())
+    const turn = useDemo.getState().turns[0]!
+    expect(turn.heard).toBe('nhảy lên đi')
+    expect(turn.typedFix).toEqual({ original: 'nhay len di', corrected: 'nhảy lên đi' })
+    expect(mocks.parse.mock.calls.map((c) => c[0])).toEqual(['nhay len di', 'nhảy lên đi'])
+    expect((mocks.submit.mock.calls[0]![0] as EngineRequest).actions).toEqual([{ type: 'jump', count: 1 }])
+    expect(useDemo.getState().stages).toMatchObject({ qwen: 'done', robot: 'done' })
+  })
+
+  it('well-formed typed text and chips skip Qwen', async () => {
+    on()
+    await submitCommand('nhảy lên')
+    await new Promise((r) => setTimeout(r, DUPLICATE_WINDOW_MS + 5))
+    await submitCommand('bat den len', 'chip')
+    expect(mocks.requestCorrection).not.toHaveBeenCalled()
+    expect(useDemo.getState().stages.qwen).toBe('skipped')
+  })
+
+  it('keeps the original reading when the correction is understood less', async () => {
+    on()
+    mocks.parse.mockImplementation(async (text: string) =>
+      text === 'bat den len'
+        ? result(text, [{ type: 'light', power: 'on' }], { inputMode: 'ascii' })
+        : result(text, []),
+    )
+    mocks.requestCorrection.mockImplementation(async () => ({
+      kind: 'ok',
+      corrected: 'bát đền lẹn',
+      changed: true,
+    }))
+    await submitCommand('bat den len')
+    const turn = useDemo.getState().turns[0]!
+    expect(turn.heard).toBe('bat den len')
+    expect(turn.typedFix).toBeUndefined()
+    expect((mocks.submit.mock.calls[0]![0] as EngineRequest).actions).toEqual([
+      { type: 'light', power: 'on' },
+    ])
+  })
+
+  it('needsTypedFix: no diacritics, parser guesses, or unread words', () => {
+    const base = result('x', [{ type: 'jump', count: 1 }])
+    expect(needsTypedFix('nhay len', { ...base, inputMode: 'ascii' })).toBe(true)
+    expect(needsTypedFix('nhảy lên', base)).toBe(false)
+    expect(needsTypedFix('5 + 3', { ...base, inputMode: 'ascii' })).toBe(false)
+    const sub = (kind: 'dialect' | 'fuzzy' | 'phonetic' | 'spelling' | 'chat') => ({
+      ...base,
+      substitutions: [{ from: 'a', to: 'b', start: 0, end: 1, kind }],
+    })
+    expect(needsTypedFix('nhẩy lên', sub('fuzzy'))).toBe(true)
+    expect(needsTypedFix('nhẩy lên', sub('phonetic'))).toBe(true)
+    expect(needsTypedFix('chừ mấy giờ', sub('dialect'))).toBe(false)
+    expect(needsTypedFix('ko nhảy', sub('chat'))).toBe(false)
+    expect(
+      needsTypedFix('bậc đèn', { ...base, unknown: [{ text: 'bậc', clause: 0, reason: 'no_match' }] }),
+    ).toBe(true)
   })
 })

@@ -9,7 +9,16 @@ import type { ExampleCategory, ExampleTag } from './input-panel/examples'
 const bot = project.botName
 
 type TranscriptStatus =
-  'hearing' | 'thinking' | 'creating' | 'ok' | 'partial' | 'impossible' | 'unknown' | 'error' | 'interrupted'
+  | 'hearing'
+  | 'thinking'
+  | 'correcting'
+  | 'creating'
+  | 'ok'
+  | 'partial'
+  | 'impossible'
+  | 'unknown'
+  | 'error'
+  | 'interrupted'
 
 const vi = {
   section: {
@@ -176,6 +185,7 @@ const vi = {
     status: {
       hearing: 'Đang nghe',
       thinking: 'Đang hiểu',
+      correcting: 'Qwen đang hiệu chỉnh…',
       creating: 'Qwen đang nghĩ động tác…',
       ok: 'Đã hiểu',
       partial: 'Hiểu một phần',
@@ -186,6 +196,7 @@ const vi = {
     } satisfies Record<TranscriptStatus, string>,
     statusLabel: 'Trạng thái',
     asrLine: 'Nhận dạng (ASR)',
+    typedLine: 'Bạn gõ',
     qwenLine: 'Sau hiệu chỉnh hậu kỳ (Qwen)',
     understood: 'Robot hiểu là',
     dialectBadge: 'Từ địa phương',
@@ -211,6 +222,8 @@ const vi = {
 
   ai: {
     disclosure: 'Lệnh robot chưa biết sẽ được gửi tới Qwen (Alibaba Cloud) để nghĩ ra động tác mới.',
+    correctDisclosure:
+      'Lệnh gõ không dấu hoặc sai dấu sẽ được Qwen (Alibaba Cloud) sửa lại trước khi robot làm theo.',
     heading: 'Động tác mới do Qwen nghĩ ra',
   },
 
@@ -422,6 +435,7 @@ const en: typeof vi = {
     status: {
       hearing: 'Listening',
       thinking: 'Understanding',
+      correcting: 'Qwen is correcting…',
       creating: 'Qwen is inventing a move…',
       ok: 'Understood',
       partial: 'Partly understood',
@@ -432,6 +446,7 @@ const en: typeof vi = {
     },
     statusLabel: 'Status',
     asrLine: 'Recognised (ASR)',
+    typedLine: 'You typed',
     qwenLine: 'Corrected (Qwen)',
     understood: 'The robot understood',
     dialectBadge: 'Regional words',
@@ -457,6 +472,8 @@ const en: typeof vi = {
 
   ai: {
     disclosure: "Commands the robot doesn't know are sent to Qwen (Alibaba Cloud) to invent a new move.",
+    correctDisclosure:
+      'Commands typed without (or with wrong) Vietnamese diacritics are corrected by Qwen (Alibaba Cloud) before the robot acts.',
     heading: 'New moves invented by Qwen',
   },
 

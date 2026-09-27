@@ -34,11 +34,11 @@ Open http://localhost:5173.
 ## How it works
 
 ```
-text (or, later, audio → ASR) ──► command parser (NLU) ──► robot engine ──► 3D robot + room + speech bubble + voice
-                                   rule-based, pluggable      plans & runs actions, replies, timers, weather
-                                          │  moves it has no animation for
-                                          ▼
-                              /api/motion → Qwen invents a keyframed move → compiled onto the skeleton
+text, or audio → ASR ──► /api/correct (Qwen post-correction) ──► command parser (NLU) ──► robot engine ──► 3D robot + room + speech bubble + voice
+                          ASR always; typed text only without     rule-based, pluggable      plans & runs actions, replies, timers, weather
+                          or with wrong diacritics                       │  moves it has no animation for
+                                                                         ▼
+                                                     /api/motion → Qwen invents a keyframed move → compiled onto the skeleton
 ```
 
 - **Parser** (`src/nlu`) — rule-based Vietnamese understanding in the browser: tone/diacritic normalization, a regional-word lexicon (Central, Nghệ Tĩnh, Southern: _chừ, rứa, mô, mần, hông, quẹo, mở đèn…_), Vietnamese number words, typo tolerance, chained commands ("nhảy 3 lần rồi vẫy tay"). It implements the `CommandParser` interface in `src/core/parser.ts`, so a Qwen/LLM parser can replace it without touching the UI.
@@ -60,6 +60,7 @@ text (or, later, audio → ASR) ──► command parser (NLU) ──► robot e
 | Robot sentences                                    | `src/replies/*`                                                                                                       |
 | AI-move prompt, pose cookbook, joint ranges        | `src/server/motionPrompt.ts`, `src/motion/script.ts` (bump `MOTION_PROMPT_VERSION` when a move's meaning changes)     |
 | Which commands go to Qwen                          | `src/features/demo/escalate.ts` (+ its tests)                                                                         |
+| Post-correction prompt / which typed text is fixed | `src/server/correctPrompt.ts` (bump `CORRECT_PROMPT_VERSION`), `needsTypedFix` in `src/features/demo/pipeline.ts`     |
 
 ## Enable the Audio tab
 
@@ -90,6 +91,15 @@ Local dev: put the same variables in `.env.local` and run `npm run dev` (a dev-o
 **Cost & limits:** `qwen3.7-plus` costs about $0.003–0.01 per brand-new move (new Model Studio accounts get 1M free tokens for 90 days). Each visitor can ask for 6 new moves a minute and 60 a day per server instance; set `MOTION_AI_ENABLED=false` to switch it off without removing the key. Moves always end back in the normal standing pose, stay inside the room, and are cartoon-like approximations — the robot has no mouth and cannot hold real objects (props are mimed).
 
 **Privacy:** commands the robot does not know are sent to Qwen (Alibaba Cloud) — the site says so under the command box when the feature is on.
+
+## Post-correction (Qwen)
+
+The "Hiệu chỉnh hậu kỳ (Qwen)" step of the pipeline. `POST /api/correct` (`api/correct.ts` → `src/server/correctHandler.ts`, same `DASHSCOPE_API_KEY`) asks Qwen to fix **recognition and typing errors only** — missing or wrong diacritics, a misheard word ("vây tay" → "vẫy tay") — and to keep regional words (_chừ, rứa, mô, mần…_) as they are, so the parser still recognises the dialect and a corrected transcript stays comparable with ViMD's references.
+
+- **Which text:** every ASR transcript; typed commands only when written without diacritics, or when the parser had to guess words (spelling / typo / sound-alike fixes) or could not read some. Well-formed commands and the example chips skip it.
+- **Guard:** the server refuses a "correction" that rewrites the sentence (different words rather than restored diacritics or a letter or two — e.g. "chừ … rứa" → "bây giờ … vậy") and returns the input unchanged.
+- **UI:** the transcript card shows what was heard or typed and what Qwen made of it; the robot acts on the correction (for typed text, unless the parser understands the correction less). If Qwen fails or takes more than 10 s, the robot acts on the original and the step shows "lỗi".
+- **Limits / switches:** 20 corrections a minute and 500 a day per visitor per server instance, cached per instance; `CORRECT_AI_ENABLED=false` switches it off, `QWEN_CORRECT_MODEL` picks a faster model than `QWEN_MODEL` (thinking is always off for it). The site says under the command box and in the Voice tab that text is sent to Qwen.
 
 ## Deploy
 

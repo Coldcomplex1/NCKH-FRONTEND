@@ -5,6 +5,7 @@ import {
   CircleHelp,
   CircleStop,
   LoaderCircle,
+  SpellCheck,
   TriangleAlert,
   WandSparkles,
   type LucideIcon,
@@ -29,6 +30,7 @@ const STATUS_STYLE: Record<
 > = {
   hearing: { icon: LoaderCircle, cls: 'border-primary bg-primary-soft', spin: true },
   thinking: { icon: LoaderCircle, cls: 'border-primary bg-primary-soft', spin: true },
+  correcting: { icon: SpellCheck, cls: 'border-primary bg-primary-soft', pulse: true },
   creating: { icon: WandSparkles, cls: 'border-primary bg-primary-soft', pulse: true },
   ok: { icon: Check, cls: 'border-success bg-success-soft' },
   partial: { icon: TriangleAlert, cls: 'border-warning bg-sun-soft' },
@@ -111,20 +113,19 @@ function TurnBody({ turn, hearing }: { turn: Turn; hearing: boolean }) {
             {tt.hearing}
           </p>
         ) : turn.asr?.corrected ? (
-          <dl className="mt-2 space-y-1">
-            <div>
-              <dt className="text-sm text-muted">{tt.asrLine}</dt>
-              <dd lang="vi" className="text-lg text-ink">
-                “{turn.asr.raw}”
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted">{tt.qwenLine}</dt>
-              <dd lang="vi" className="font-display text-2xl font-bold break-words text-ink">
-                “{turn.asr.corrected}”
-              </dd>
-            </div>
-          </dl>
+          <CorrectionLines
+            beforeLabel={tt.asrLine}
+            before={turn.asr.raw}
+            afterLabel={tt.qwenLine}
+            after={turn.asr.corrected}
+          />
+        ) : turn.typedFix ? (
+          <CorrectionLines
+            beforeLabel={tt.typedLine}
+            before={turn.typedFix.original}
+            afterLabel={tt.qwenLine}
+            after={turn.typedFix.corrected}
+          />
         ) : turn.heard ? (
           <p lang="vi" className="mt-2 font-display text-2xl font-bold break-words text-ink">
             “{turn.heard}”
@@ -157,6 +158,26 @@ function TurnBody({ turn, hearing }: { turn: Turn; hearing: boolean }) {
         </div>
       ) : null}
     </div>
+  )
+}
+
+/** "What was heard / typed" above "what Qwen corrected it to" (the robot acts on the second). */
+function CorrectionLines(props: { beforeLabel: string; before: string; afterLabel: string; after: string }) {
+  return (
+    <dl className="mt-2 space-y-1">
+      <div>
+        <dt className="text-sm text-muted">{props.beforeLabel}</dt>
+        <dd lang="vi" className="text-lg text-ink">
+          “{props.before}”
+        </dd>
+      </div>
+      <div>
+        <dt className="text-sm text-muted">{props.afterLabel}</dt>
+        <dd lang="vi" className="font-display text-2xl font-bold break-words text-ink">
+          “{props.after}”
+        </dd>
+      </div>
+    </dl>
   )
 }
 

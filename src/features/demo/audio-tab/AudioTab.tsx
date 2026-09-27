@@ -6,6 +6,7 @@ import { useDict, useLang } from '@/i18n'
 import { ENV } from '@/lib/env'
 import { usePrefersReducedMotion } from '@/lib/hooks'
 import { renderReply } from '@/replies'
+import { useDemo } from '@/store/demoStore'
 import { refreshAsrStatus } from '../asrStatus'
 import { submitAudio, type AsrSettled } from '../pipeline'
 import { errorRef } from '../turnErrors'
@@ -80,6 +81,7 @@ interface Pending {
 
 function AudioPanel({ backend }: { backend: BackendState }) {
   const t = useDict(audioDict)
+  const correctOn = useDemo((s) => s.correction === 'on')
   const lang = useLang()
   const reducedMotion = usePrefersReducedMotion()
   const rec = useRecorder({ onStart: () => setNotice(null) })
@@ -205,7 +207,7 @@ function AudioPanel({ backend }: { backend: BackendState }) {
 
       <p className="flex items-center gap-2 text-sm text-muted">
         <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />
-        {t.privacy}
+        {correctOn ? t.privacyQwen : t.privacy}
       </p>
     </div>
   )

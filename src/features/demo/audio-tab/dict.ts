@@ -22,6 +22,8 @@ const vi = {
 
   backendLoading: 'Máy chủ đang nạp mô hình, chờ vài giây rồi gửi nhé.',
   privacy: 'Âm thanh chỉ dùng để nhận dạng, không được lưu lại.',
+  privacyQwen:
+    'Âm thanh chỉ dùng để nhận dạng, không được lưu lại. Câu nhận dạng được gửi tới Qwen (Alibaba Cloud) để hiệu chỉnh.',
 
   record: {
     heading: 'Ghi âm',
@@ -105,6 +107,8 @@ const en: typeof vi = {
 
   backendLoading: 'The server is loading the model. Wait a few seconds, then send.',
   privacy: 'Your audio is only used for recognition and is not stored.',
+  privacyQwen:
+    'Your audio is only used for recognition and is not stored. The recognised sentence is sent to Qwen (Alibaba Cloud) for correction.',
 
   record: {
     heading: 'Record',

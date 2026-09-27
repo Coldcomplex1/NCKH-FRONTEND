@@ -69,4 +69,10 @@ export const ENV = {
     /** The robot shows its thinking pose meanwhile; after this the move counts as failed. */
     timeoutMs: 40_000,
   },
+  /** Qwen post-correction (same key as the moves). On only when GET /api/correct → enabled. */
+  correct: {
+    url: '/api/correct',
+    /** After this the robot acts on the uncorrected text. */
+    timeoutMs: 10_000,
+  },
 } as const

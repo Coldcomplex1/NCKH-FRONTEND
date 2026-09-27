@@ -1,4 +1,4 @@
-import { WandSparkles } from 'lucide-react'
+import { SpellCheck, WandSparkles } from 'lucide-react'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useDict } from '@/i18n'
 import { ENV } from '@/lib/env'
@@ -26,6 +26,7 @@ export function InputPanel() {
   const [tab, setTab] = useState<InputTab>('text')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const aiOn = useDemo((s) => s.aiMoves === 'on')
+  const correctOn = useDemo((s) => s.correction === 'on')
   const asr = useDemo((s) => s.asr)
   // Only a real backend can be offline; the dev mock is always "up".
   const backend = ENV.asr.enabled ? asr : 'ok'
@@ -72,6 +73,12 @@ export function InputPanel() {
             <p className="mt-3 flex items-start gap-2 text-sm text-muted">
               <WandSparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               {t.ai.disclosure}
+            </p>
+          ) : null}
+          {correctOn ? (
+            <p className="mt-2 flex items-start gap-2 text-sm text-muted">
+              <SpellCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+              {t.ai.correctDisclosure}
             </p>
           ) : null}
         </div>
