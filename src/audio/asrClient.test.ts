@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AsrError, parseRetryAfter, readDetail, transcribe, uploadFilename } from './asrClient'
+import { AsrError, checkHealth, parseRetryAfter, readDetail, transcribe, uploadFilename } from './asrClient'
 
 const BASE = 'https://asr.example.org'
 const wav = () => new Blob([new Uint8Array(64)], { type: 'audio/wav' })
@@ -198,6 +198,59 @@ describe('transcribe', () => {
 
   it('no base URL → disabled', async () => {
     expect((await failure(transcribe(wav(), { baseUrl: '  ' }))).kind).toBe('disabled')
+  })
+})
+
+describe('checkHealth', () => {
+  const health = (fetchImpl: unknown, timeoutMs?: number) =>
+    checkHealth({ baseUrl: `${BASE}/`, fetchImpl: fetchImpl as typeof fetch, timeoutMs })
+
+  it('GETs {base}/health with no custom headers and maps the status', async () => {
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
+      json({ status: 'ok', model: 'best_model', device: 'cuda', public: true }),
+    )
+    expect(await health(fetchImpl)).toBe('ok')
+    const [url, init] = fetchImpl.mock.calls[0]!
+    expect(url).toBe(`${BASE}/health`)
+    expect(init?.method ?? 'GET').toBe('GET')
+    expect(init?.headers).toBeUndefined() // CORS simple request
+    expect(await health(vi.fn(async () => json({ status: 'loading' })))).toBe('loading')
+  })
+
+  it.each([
+    ['a model that failed to load', async () => json({ status: 'error' })],
+    ['a tunnel with nothing behind it (502)', async () => new Response('Bad Gateway', { status: 502 })],
+    ['a 503', async () => json({ detail: 'x' }, { status: 503 })],
+    ['a body that is not JSON', async () => new Response('<html>', { status: 200 })],
+    [
+      'a network failure',
+      async () => {
+        throw new TypeError('Failed to fetch')
+      },
+    ],
+  ])('offline for %s', async (_label, impl) => {
+    expect(await health(vi.fn(impl))).toBe('offline')
+  })
+
+  it('offline after the timeout', async () => {
+    vi.useFakeTimers()
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+        }),
+    )
+    const p = health(fetchImpl, 3000)
+    await vi.advanceTimersByTimeAsync(3001)
+    expect(await p).toBe('offline')
+  })
+
+  it('offline without a base URL (never fetches)', async () => {
+    const fetchImpl = vi.fn()
+    expect(await checkHealth({ baseUrl: ' ', fetchImpl: fetchImpl as unknown as typeof fetch })).toBe(
+      'offline',
+    )
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 })
 

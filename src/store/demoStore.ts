@@ -29,6 +29,10 @@ export interface Turn {
   error?: string
   /** Qwen is inventing a move for part of this command (the robot holds its thinking pose). */
   creating?: boolean
+  /** Qwen is post-correcting the transcript / typed text. */
+  correcting?: boolean
+  /** A typed command Qwen corrected (no or wrong diacritics); `heard` is then the corrected text. */
+  typedFix?: { original: string; corrected: string }
 }
 
 export interface Bubble {
@@ -95,6 +99,10 @@ interface DemoState {
   lastActions: Action[]
   /** Whether AI-invented moves (Qwen) are available on this site ('unknown' until checked). */
   aiMoves: 'unknown' | 'on' | 'off'
+  /** Whether the ASR backend (GET /health) answers ('unknown' until checked; only with VITE_ASR_URL). */
+  asr: 'unknown' | 'ok' | 'loading' | 'offline'
+  /** Whether Qwen post-correction (GET /api/correct) is available ('unknown' until checked). */
+  correction: 'unknown' | 'on' | 'off'
 
   startTurn(turn: Omit<Turn, 'replies' | 'status'>): void
   patchTurn(id: string, patch: Partial<Turn>): void
@@ -118,6 +126,8 @@ interface DemoState {
   announce(ref: ReplyRef, assertive?: boolean): void
   setLastActions(actions: Action[]): void
   setAiMoves(state: 'on' | 'off'): void
+  setAsr(state: 'ok' | 'loading' | 'offline'): void
+  setCorrection(state: 'on' | 'off'): void
 }
 
 let seq = 0
@@ -136,6 +146,8 @@ export const useDemo = create<DemoState>()((set, get) => ({
   live: null,
   lastActions: [],
   aiMoves: 'unknown',
+  asr: 'unknown',
+  correction: 'unknown',
 
   startTurn: (turn) =>
     set((s) => ({
@@ -194,6 +206,8 @@ export const useDemo = create<DemoState>()((set, get) => ({
   announce: (ref, assertive = false) => set({ live: { id: nextId(), ref, assertive } }),
   setLastActions: (actions) => set({ lastActions: actions }),
   setAiMoves: (aiMoves) => set({ aiMoves }),
+  setAsr: (asr) => set({ asr }),
+  setCorrection: (correction) => set({ correction }),
 }))
 
 /** Non-React access (engine, pipeline). */

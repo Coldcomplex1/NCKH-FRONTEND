@@ -1,9 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePrefs } from '@/store/prefsStore'
+import { refreshAsrStatus } from '../asrStatus'
 import { AudioTab } from './AudioTab'
 
 vi.mock('../pipeline', () => ({ submitAudio: vi.fn(async () => ({ status: 'done' })) }))
+vi.mock('../asrStatus', () => ({ refreshAsrStatus: vi.fn(async () => 'ok') }))
 
 beforeEach(() => {
   usePrefs.setState({ lang: 'vi' })
@@ -39,6 +41,38 @@ describe('AudioTab', () => {
     expect(screen.getByRole('button', { name: 'Nhấn để nói' }).closest('[inert]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Chọn tệp' })).toBeInTheDocument()
     expect(screen.getByText(/tối đa 30 giây · 10 MB/)).toBeInTheDocument()
+  })
+
+  it('live: says the audio is not stored', () => {
+    render(<AudioTab live onSwitchToText={() => {}} />)
+    expect(screen.getByText(/không được lưu lại/)).toBeInTheDocument()
+  })
+
+  it('backend offline: inert panel under a "Tạm nghỉ" overlay with retry and switch-to-text', async () => {
+    const onSwitch = vi.fn()
+    render(<AudioTab live backend="offline" onSwitchToText={onSwitch} />)
+
+    const overlay = screen.getByTestId('audio-offline')
+    expect(overlay).toHaveTextContent('Tạm nghỉ')
+    expect(overlay).toHaveTextContent('Máy chủ nhận dạng đang tạm nghỉ')
+    expect(screen.queryByTestId('audio-coming-soon')).toBeNull()
+    expect(screen.getByTestId('audio-inert')).toHaveAttribute('inert')
+    const reachable = screen.getAllByRole('button').filter((b) => !b.closest('[inert]'))
+    expect(reachable.map((b) => b.textContent)).toEqual(['Thử lại', 'Chuyển sang Văn bản'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }))
+    expect(refreshAsrStatus).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Chuyển sang Văn bản' }))
+    expect(onSwitch).toHaveBeenCalledTimes(1)
+    // The retry button settles back once the check is over.
+    expect(await screen.findByRole('button', { name: 'Thử lại' })).toBeEnabled()
+  })
+
+  it('backend loading: usable panel with a "loading the model" notice', () => {
+    render(<AudioTab live backend="loading" onSwitchToText={() => {}} />)
+    expect(screen.queryByTestId('audio-offline')).toBeNull()
+    expect(screen.getByText(/đang nạp mô hình/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nhấn để nói' }).closest('[inert]')).toBeNull()
   })
 
   it('rejects a file that is not audio', async () => {

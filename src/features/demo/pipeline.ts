@@ -7,15 +7,19 @@ import { DEFAULT_PLACE } from '@/core/places'
 import { engine } from '@/engine'
 import { ENV } from '@/lib/env'
 import { speaker } from '@/speech'
-import { demo, type StageId, type TurnSource } from '@/store/demoStore'
+import { demo, type StageId, type StageState, type TurnSource } from '@/store/demoStore'
 import { getPrefs } from '@/store/prefsStore'
+import { correctionAvailable, requestCorrection } from './correctAi'
 import { mergeMoves, planEscalations, type MoveResult } from './escalate'
 import { cachedMove, motionAiAvailable, requestMove } from './motionAi'
 import { asrErrorCode, errorRef, type TurnErrorCode } from './turnErrors'
 
 /**
- * The demo pipeline: input → (ASR) → parse → (AI moves) → turn log → robot engine.
+ * The demo pipeline: input → (ASR) → (Qwen correction) → parse → (AI moves) → turn log → robot engine.
  *
+ * - Qwen correction (/api/correct, see correctAi.ts): every ASR transcript, and typed text without
+ *   diacritics or with words the parser had to guess, is post-corrected (recognition / typing errors
+ *   only; regional words stay). On any failure the robot acts on the uncorrected text.
  * - AI moves: clauses the rules cannot act out (moonwalk, lộn nhào, a crab walk…) are sent to Qwen
  *   through /api/motion (see escalate.ts). While it works the robot holds a thinking pose; moves
  *   this browser already has are replayed at once. Off entirely when the site has no Qwen key.
@@ -106,8 +110,9 @@ export function submitCommand(text: string, source: TextSource = 'text'): Promis
 
   const { turnId, controller } = beginTurn()
   demo().startTurn({ id: turnId, at: Date.now(), source, heard: clean })
-  demo().setStages({ input: 'done', asr: 'skipped', qwen: 'soon', nlu: 'active', robot: 'idle' })
-  return understandAndAct(turnId, controller.signal, clean, { source: 'text' })
+  demo().setStages({ input: 'done', asr: 'skipped', qwen: qwenIdle('skipped'), nlu: 'active', robot: 'idle' })
+  // Chips are our own well-formed examples (some deliberately without diacritics): never corrected.
+  return understandAndAct(turnId, controller.signal, clean, { source: 'text' }, source === 'text')
 }
 
 /** Send a recording or an uploaded file through ASR, then the same flow as text. */
@@ -125,7 +130,7 @@ export function submitAudio(
   else opts.signal?.addEventListener('abort', onCancel, { once: true })
 
   demo().startTurn({ id: turnId, at: Date.now(), source, heard: '' })
-  demo().setStages({ input: 'done', asr: 'active', qwen: 'soon', nlu: 'idle', robot: 'idle' })
+  demo().setStages({ input: 'done', asr: 'active', qwen: qwenIdle('idle'), nlu: 'idle', robot: 'idle' })
   return runAudio(turnId, controller.signal, blob, opts).finally(() =>
     opts.signal?.removeEventListener('abort', onCancel),
   )
@@ -142,6 +147,24 @@ export function resetPipeline(): void {
 
 function cleanInput(text: string): string {
   return text.normalize('NFC').trim().slice(0, LIMITS.maxInputChars).trim()
+}
+
+/** The Qwen stage before it runs: "sắp có" until the site says correction is available. */
+function qwenIdle(whenOn: StageState): StageState {
+  return demo().correction === 'on' ? whenOn : 'soon'
+}
+
+const STATUS_RANK: Record<ParseResult['status'], number> = { ok: 3, partial: 2, impossible: 1, unknown: 0 }
+
+/**
+ * Typed text worth sending to Qwen: written without diacritics, or with words the parser had to
+ * guess (spelling / typo / sound-alike fixes) or could not read at all — usually wrong diacritics.
+ */
+export function needsTypedFix(text: string, parse: ParseResult): boolean {
+  if (!/\p{L}{2,}/u.test(text)) return false
+  if (parse.inputMode === 'ascii') return true
+  if (parse.unknown.length > 0) return true
+  return parse.substitutions.some((s) => s.kind === 'spelling' || s.kind === 'fuzzy' || s.kind === 'phonetic')
 }
 
 function isDuplicate(key: unknown): boolean {
@@ -180,11 +203,14 @@ async function understandAndAct(
   signal: AbortSignal,
   text: string,
   opts: Pick<ParseOptions, 'source' | 'alternatives'>,
+  typed = false,
 ): Promise<SubmitResult> {
   let parse: ParseResult
+  let parser: ReturnType<ParserModule['getParser']>
   try {
     const { getParser } = parserModule ?? (await loadParser())
-    parse = await getParser().parse(text, buildParseContext(), { ...opts, signal })
+    parser = getParser()
+    parse = await parser.parse(text, buildParseContext(), { ...opts, signal })
   } catch (err) {
     if (signal.aborted) return interrupted(turnId)
     console.error('[pipeline] parse failed', err)
@@ -192,6 +218,33 @@ async function understandAndAct(
   }
   // Superseded while parsing: record what we understood, but never act on it.
   if (signal.aborted) return interrupted(turnId, { parse })
+
+  // Typed without / with wrong diacritics: Qwen corrects it, and the robot acts on the correction
+  // unless the parser understands it less than the original.
+  if (typed && needsTypedFix(text, parse) && (await correctionAvailable())) {
+    if (signal.aborted) return interrupted(turnId, { parse })
+    demo().patchTurn(turnId, { correcting: true })
+    demo().setStages({ qwen: 'active' })
+    const fix = await requestCorrection(text, 'text', { signal })
+    demo().patchTurn(turnId, { correcting: false })
+    if (signal.aborted) return interrupted(turnId, { parse })
+    if (fix.kind === 'ok' && fix.changed) {
+      const fixed = cleanInput(fix.corrected)
+      try {
+        const fixedParse = await parser.parse(fixed, buildParseContext(), { ...opts, signal })
+        if (signal.aborted) return interrupted(turnId, { parse })
+        if (STATUS_RANK[fixedParse.status] >= STATUS_RANK[parse.status]) {
+          demo().patchTurn(turnId, { heard: fixed, typedFix: { original: text, corrected: fixed } })
+          parse = fixedParse
+          text = fixed
+        }
+      } catch {
+        if (signal.aborted) return interrupted(turnId, { parse })
+        // keep the original reading
+      }
+    }
+    if (isCurrent(turnId)) demo().setStages({ qwen: fix.kind === 'ok' ? 'done' : 'error' })
+  }
 
   // AI moves (Qwen): the clauses the rules cannot act out get a move invented for them.
   const escalations = planEscalations(parse)
@@ -267,22 +320,37 @@ async function runAudio(
   }
 
   const raw = res.text.trim()
-  const corrected = res.corrected_text?.trim() || undefined
-  const heard = cleanInput(corrected ?? raw)
+  let corrected = res.corrected_text?.trim() || undefined
+  let heard = cleanInput(corrected ?? raw)
   const latencyMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0)
-  demo().patchTurn(turnId, {
-    heard,
-    asr: { raw, corrected, durationSec: res.duration ?? knownDuration ?? undefined, latencyMs },
-  })
+  const asrInfo = { raw, durationSec: res.duration ?? knownDuration ?? undefined, latencyMs }
+  demo().patchTurn(turnId, { heard, asr: { ...asrInfo, corrected } })
 
   if (!heard) {
     opts.onAsrSettled?.({ ok: false, error: 'asr.empty' })
     return fail(turnId, 'asr', 'asr.empty')
   }
-
-  // Qwen is "done" only when the backend actually returned a correction.
-  demo().setStages({ asr: 'done', qwen: corrected ? 'done' : 'soon', nlu: 'active' })
   opts.onAsrSettled?.({ ok: true })
+
+  // Qwen post-correction, unless the backend already corrected it. "done" once Qwen answered (even
+  // with "nothing to fix"); "sắp có" when the site has no correction step.
+  let qwen: StageState = corrected ? 'done' : 'soon'
+  if (!corrected && (await correctionAvailable())) {
+    if (signal.aborted) return interrupted(turnId)
+    demo().setStages({ asr: 'done', qwen: 'active' })
+    demo().patchTurn(turnId, { correcting: true })
+    const fix = await requestCorrection(raw, 'asr', { signal })
+    demo().patchTurn(turnId, { correcting: false })
+    if (signal.aborted) return interrupted(turnId)
+    qwen = fix.kind === 'ok' ? 'done' : 'error'
+    if (fix.kind === 'ok' && fix.changed && cleanInput(fix.corrected)) {
+      corrected = fix.corrected
+      heard = cleanInput(corrected)
+      demo().patchTurn(turnId, { heard, asr: { ...asrInfo, corrected } })
+    }
+  }
+
+  demo().setStages({ asr: 'done', qwen, nlu: 'active' })
   return understandAndAct(turnId, signal, heard, { source: 'asr', alternatives: res.alternatives })
 }
 

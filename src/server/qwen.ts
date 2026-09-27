@@ -89,7 +89,7 @@ async function readStream(res: Response): Promise<QwenResult> {
 export async function qwenChat(
   cfg: QwenConfig,
   messages: ChatMessage[],
-  opts: { fetch: typeof fetch; timeoutMs: number; signal?: AbortSignal },
+  opts: { fetch: typeof fetch; timeoutMs: number; signal?: AbortSignal; temperature?: number },
 ): Promise<QwenResult> {
   const ac = new AbortController()
   let timedOut = false
@@ -105,7 +105,7 @@ export async function qwenChat(
       messages,
       response_format: { type: 'json_object' },
       enable_thinking: cfg.thinking,
-      temperature: 0.5,
+      temperature: opts.temperature ?? 0.5,
       max_tokens: MAX_TOKENS,
     }
     if (cfg.thinking) {

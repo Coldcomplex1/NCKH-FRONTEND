@@ -10,16 +10,19 @@ const TABS: InputTab[] = ['text', 'voice']
 
 /**
  * [Văn bản | Giọng nói (Sắp có)] — WAI-ARIA tabs with roving tabindex and automatic activation
- * (←/→/Home/End). The voice tab stays selectable while disabled so people can see "coming soon".
+ * (←/→/Home/End). The voice tab stays selectable while disabled so people can see "coming soon"
+ * (or "tạm nghỉ" while the ASR backend is offline).
  */
 export function InputTabs({
   value,
   onChange,
   voiceSoon,
+  voiceOffline = false,
 }: {
   value: InputTab
   onChange(tab: InputTab): void
   voiceSoon: boolean
+  voiceOffline?: boolean
 }) {
   const t = useDict(demoDict).tabs
   const refs = useRef<Record<InputTab, HTMLButtonElement | null>>({ text: null, voice: null })
@@ -67,7 +70,11 @@ export function InputTabs({
           >
             <Icon aria-hidden="true" className="size-6 shrink-0" />
             <span>{tab === 'text' ? t.text : t.voice}</span>
-            {tab === 'voice' && voiceSoon ? <Badge tone="sun">{t.soon}</Badge> : null}
+            {tab === 'voice' && voiceSoon ? (
+              <Badge tone="sun">{t.soon}</Badge>
+            ) : tab === 'voice' && voiceOffline ? (
+              <Badge tone="muted">{t.offline}</Badge>
+            ) : null}
           </button>
         )
       })}

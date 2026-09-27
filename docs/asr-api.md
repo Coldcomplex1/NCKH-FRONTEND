@@ -46,12 +46,12 @@ with its own filter; if its 16 kHz conversion fails, it uploads the original.
 }
 ```
 
-| Field            | Required | Meaning                                                                                                                                                                                              |
-| ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `text`           | **yes**  | Raw ASR transcript (string). It stays the raw model output, even once Qwen correction exists.                                                                                                        |
-| `duration`       | no       | Audio length in seconds, measured by the server.                                                                                                                                                     |
-| `corrected_text` | no       | **Future** Qwen post-correction. When it is present and non-empty, the robot acts on it instead of `text`. The UI shows both lines, and the pipeline's "Qwen" step switches from "sắp có" to "xong". |
-| `alternatives`   | no       | **Future** n-best hypotheses (e.g. 5-beam). The command parser may use them to pick the most understandable one.                                                                                     |
+| Field            | Required | Meaning                                                                                                                                                                                                                                                   |
+| ---------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`           | **yes**  | Raw ASR transcript (string). It stays the raw model output, even once Qwen correction exists.                                                                                                                                                             |
+| `duration`       | no       | Audio length in seconds, measured by the server.                                                                                                                                                                                                          |
+| `corrected_text` | no       | Post-correction done by the backend. When it is present and non-empty, the robot acts on it instead of `text` and the UI shows both lines. When it is absent, the site corrects `text` itself through its own `POST /api/correct` (Qwen, see the README). |
+| `alternatives`   | no       | **Future** n-best hypotheses (e.g. 5-beam). The command parser may use them to pick the most understandable one.                                                                                                                                          |
 
 Extra fields are ignored, so you can add things like `model` or `processing_ms` freely. Text is
 truncated to 200 characters on the client.
@@ -79,10 +79,17 @@ The UI shows its own friendly text for each case.
 A browser reports CORS and mixed-content failures only as a generic network error. If the site says
 "couldn't reach the server" but `curl` works, check CORS and HTTPS first.
 
-### Optional: `GET /health`
+### `GET /health`
 
-`{"status": "ok", "model": "phowhisper-large-vimd@checkpoint-1750", "device": "cuda"}`. The site does
-not call it in v1, but it's useful for uptime checks.
+`{"status": "ok" | "loading" | "error", "model": "best_model", "device": "cuda"}`. The site calls it
+once on page load and again while the Voice tab is open (`src/features/demo/asrStatus.ts`), with no
+custom headers (a CORS simple request):
+
+| Answer                                                                | What the Voice tab shows                                                           |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `"status": "ok"`                                                      | usable                                                                             |
+| `"status": "loading"`                                                 | usable, with a "loading the model" notice (re-checks every 5 s)                    |
+| anything else, non-2xx (a tunnel's 502), timeout (6 s), network error | inert under a "Tạm nghỉ / Offline" overlay with "Try again" (re-checks every 30 s) |
 
 ---
 

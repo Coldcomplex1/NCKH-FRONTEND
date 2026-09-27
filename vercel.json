@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/motion.ts": { "maxDuration": 60 }
+    "api/motion.ts": { "maxDuration": 60 },
+    "api/correct.ts": { "maxDuration": 20 }
   },
   "headers": [
     {

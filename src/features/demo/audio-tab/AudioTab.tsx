@@ -1,11 +1,13 @@
-import { CircleAlert, CircleCheck, FlaskConical, LoaderCircle, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { CircleAlert, CircleCheck, FlaskConical, LoaderCircle, ShieldCheck, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useRecorder } from '@/audio/useRecorder'
 import { Badge, Button } from '@/components/ui'
 import { useDict, useLang } from '@/i18n'
 import { ENV } from '@/lib/env'
 import { usePrefersReducedMotion } from '@/lib/hooks'
 import { renderReply } from '@/replies'
+import { useDemo } from '@/store/demoStore'
+import { refreshAsrStatus } from '../asrStatus'
 import { submitAudio, type AsrSettled } from '../pipeline'
 import { errorRef } from '../turnErrors'
 import { AudioPreview } from './AudioPreview'
@@ -14,18 +16,56 @@ import { audioDict } from './dict'
 import { FileDropzone, type ChosenFile } from './FileDropzone'
 import { RecorderControls } from './RecorderControls'
 
+/** What GET /health last said about the ASR backend ('ok' for the dev mock). */
+export type BackendState = 'unknown' | 'ok' | 'loading' | 'offline'
+
+/** While the tab is open: re-check an offline backend every 30 s, a loading one every 5 s. */
+const RECHECK_MS: Partial<Record<BackendState, number>> = { offline: 30_000, loading: 5_000 }
+
 /**
  * The voice tab. Always BUILT; until VITE_ASR_URL is set (or the dev mock is on) the whole panel is
- * `inert` (nothing inside can be focused or clicked) under a "Sắp có" overlay.
+ * `inert` (nothing inside can be focused or clicked) under a "Sắp có" overlay. With a backend that
+ * does not answer (the team's GPU machine is off) it is inert under a "Tạm nghỉ" overlay instead.
  */
-export function AudioTab({ live, onSwitchToText }: { live: boolean; onSwitchToText(): void }) {
-  if (live) return <AudioPanel />
+export function AudioTab({
+  live,
+  backend = 'ok',
+  onSwitchToText,
+}: {
+  live: boolean
+  backend?: BackendState
+  onSwitchToText(): void
+}) {
+  const [retrying, setRetrying] = useState(false)
+  const recheckMs = live ? RECHECK_MS[backend] : undefined
+
+  useEffect(() => {
+    if (!recheckMs) return
+    const id = setInterval(() => void refreshAsrStatus(), recheckMs)
+    return () => clearInterval(id)
+  }, [recheckMs])
+
+  const retry = () => {
+    setRetrying(true)
+    void refreshAsrStatus().finally(() => setRetrying(false))
+  }
+
+  if (live && backend !== 'offline') return <AudioPanel backend={backend} />
   return (
     <div className="relative min-h-[28rem]">
       <div inert className="select-none" data-testid="audio-inert">
-        <AudioPanel />
+        <AudioPanel backend={backend} />
       </div>
-      <ComingSoonOverlay onSwitchToText={onSwitchToText} />
+      {live ? (
+        <ComingSoonOverlay
+          variant="offline"
+          onSwitchToText={onSwitchToText}
+          onRetry={retry}
+          retrying={retrying}
+        />
+      ) : (
+        <ComingSoonOverlay onSwitchToText={onSwitchToText} />
+      )}
     </div>
   )
 }
@@ -39,8 +79,9 @@ interface Pending {
   trimmed: boolean
 }
 
-function AudioPanel() {
+function AudioPanel({ backend }: { backend: BackendState }) {
   const t = useDict(audioDict)
+  const correctOn = useDemo((s) => s.correction === 'on')
   const lang = useLang()
   const reducedMotion = usePrefersReducedMotion()
   const rec = useRecorder({ onStart: () => setNotice(null) })
@@ -75,6 +116,8 @@ function AudioPanel() {
         clearPending()
       } else if (!r.cancelled) {
         setNotice({ kind: 'error', code: r.error })
+        // Unreachable: re-check, so the "Tạm nghỉ" overlay appears if the machine went down.
+        if (r.error === 'asr.network' && ENV.asr.enabled) void refreshAsrStatus()
       }
     }
     // submitAudio primes speech synchronously: keep it directly inside the click handler.
@@ -94,6 +137,13 @@ function AudioPanel() {
           <FlaskConical aria-hidden="true" className="size-5" />
           <Badge tone="muted">DEV</Badge>
           {t.mock}
+        </p>
+      ) : null}
+
+      {backend === 'loading' ? (
+        <p className="flex items-center gap-2 rounded-lg border-2 border-warning bg-sun-soft p-3 text-base text-ink">
+          <LoaderCircle aria-hidden="true" className="size-5 shrink-0 animate-spin" />
+          {t.backendLoading}
         </p>
       ) : null}
 
@@ -154,6 +204,11 @@ function AudioPanel() {
           {renderReply(errorRef(notice.code), lang).text}
         </p>
       ) : null}
+
+      <p className="flex items-center gap-2 text-sm text-muted">
+        <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />
+        {correctOn ? t.privacyQwen : t.privacy}
+      </p>
     </div>
   )
 }

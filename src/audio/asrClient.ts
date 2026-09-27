@@ -212,6 +212,47 @@ export async function transcribe(audio: Blob, opts: TranscribeOptions = {}): Pro
   }
 }
 
+/** GET {base}/health: the model is ready, still loading, or the server cannot be used right now. */
+export type AsrHealth = 'ok' | 'loading' | 'offline'
+
+export interface HealthOptions {
+  timeoutMs?: number
+  /** Override the base URL (tests); defaults to VITE_ASR_URL. */
+  baseUrl?: string
+  fetchImpl?: typeof fetch
+}
+
+export const HEALTH_TIMEOUT_MS = 6_000
+
+/**
+ * Is the backend up? The model runs on the team's own GPU machine, which is not always on.
+ * Like `transcribe`, a CORS simple request (a plain GET, no headers). Never throws: a network
+ * failure, a timeout, a non-2xx status (a tunnel answers 502 when the server behind it is down)
+ * or an unexpected body all count as 'offline'.
+ */
+export async function checkHealth(opts: HealthOptions = {}): Promise<AsrHealth> {
+  const base = (opts.baseUrl ?? ENV.asr.url).trim().replace(/\/+$/, '')
+  if (!base) return 'offline'
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? HEALTH_TIMEOUT_MS)
+  try {
+    const res = await (opts.fetchImpl ?? fetch)(`${base}/health`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    if (!res.ok) return 'offline'
+    const body: unknown = await res.json()
+    const status = body && typeof body === 'object' ? (body as { status?: unknown }).status : undefined
+    if (status === 'ok') return 'ok'
+    if (status === 'loading') return 'loading'
+    return 'offline'
+  } catch {
+    return 'offline'
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function mapThrown(err: unknown, timedOut: boolean, callerSignal: AbortSignal | undefined): AsrError {
   if (err instanceof AsrError) return err
   if (timedOut) return new AsrError('timeout', { cause: err })

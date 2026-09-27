@@ -54,6 +54,8 @@ export const ENV = {
     mock: import.meta.env.DEV && import.meta.env.VITE_ASR_MOCK === 'true',
     timeoutMs: Number(import.meta.env.VITE_ASR_TIMEOUT_MS) || 45_000,
     maxUploadMB: Number(import.meta.env.VITE_ASR_MAX_UPLOAD_MB) || 10,
+    /** Browser echo cancellation / noise suppression / auto gain on the mic (VITE_ASR_MIC_DSP=false = raw mic). */
+    micDsp: import.meta.env.VITE_ASR_MIC_DSP !== 'false',
   },
   nlu: {
     engine: import.meta.env.VITE_NLU_ENGINE === 'llm' ? ('llm' as const) : ('rules' as const),
@@ -66,5 +68,11 @@ export const ENV = {
     mock: import.meta.env.DEV && import.meta.env.VITE_MOTION_MOCK === 'true',
     /** The robot shows its thinking pose meanwhile; after this the move counts as failed. */
     timeoutMs: 40_000,
+  },
+  /** Qwen post-correction (same key as the moves). On only when GET /api/correct → enabled. */
+  correct: {
+    url: '/api/correct',
+    /** After this the robot acts on the uncorrected text. */
+    timeoutMs: 10_000,
   },
 } as const

@@ -113,7 +113,7 @@ export function resetMotionState(): void {
 
 // ---------------------------------------------------------------------------------- helpers
 
-function json(status: number, body: unknown, extra: Record<string, string> = {}): Response {
+export function json(status: number, body: unknown, extra: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extra },
@@ -123,14 +123,14 @@ function json(status: number, body: unknown, extra: Record<string, string> = {})
 const fail = (status: number, error: MotionErrorCode, extra?: Record<string, string>) =>
   json(status, { error }, extra)
 
-function clientIp(req: Request): string {
+export function clientIp(req: Request): string {
   const fwd = req.headers.get('x-forwarded-for')
   if (fwd) return fwd.split(',')[0]!.trim()
   return req.headers.get('x-real-ip')?.trim() || 'unknown'
 }
 
 /** The page and the function share an origin; other origins may be allowed explicitly. */
-function originAllowed(req: Request, env: MotionEnv): boolean {
+export function originAllowed(req: Request, env: MotionEnv): boolean {
   const origin = req.headers.get('origin')
   if (!origin) return false
   let host: string
@@ -151,7 +151,7 @@ function originAllowed(req: Request, env: MotionEnv): boolean {
 /** Control characters (C0 and DEL) become spaces. */
 const isControl = (c: string) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127
 
-function cleanText(x: unknown): string | null {
+export function cleanText(x: unknown): string | null {
   if (typeof x !== 'string') return null
   const t = Array.from(x.normalize('NFC'), (c) => (isControl(c) ? ' ' : c))
     .join('')
@@ -164,7 +164,7 @@ const cacheKey = (model: string, ask: MotionAsk) =>
   `${MOTION_PROMPT_VERSION}|${model}|${ask.kind ?? ''}|${ask.hint ?? ''}|${ask.clause.toLowerCase().replace(/[.!?,…]+$/u, '')}`
 
 /** The model's text → a JSON object (tolerates code fences and stray prose around it). */
-function parseAnswer(text: string): unknown {
+export function parseAnswer(text: string): unknown {
   const t = text
     .trim()
     .replace(/^```(?:json)?\s*/i, '')

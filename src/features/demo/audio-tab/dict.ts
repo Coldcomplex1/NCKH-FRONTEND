@@ -11,6 +11,20 @@ const vi = {
     switchToText: 'Chuyển sang Văn bản',
   },
 
+  offline: {
+    badge: 'Tạm nghỉ',
+    title: 'Máy chủ nhận dạng đang tạm nghỉ',
+    body: 'Mô hình PhoWhisper-large chạy trên máy GPU của nhóm, và máy đang tắt. Bạn vẫn ra lệnh được bằng thẻ Văn bản, hoặc thử lại sau.',
+    retry: 'Thử lại',
+    retrying: 'Đang kiểm tra…',
+    switchToText: 'Chuyển sang Văn bản',
+  },
+
+  backendLoading: 'Máy chủ đang nạp mô hình, chờ vài giây rồi gửi nhé.',
+  privacy: 'Âm thanh chỉ dùng để nhận dạng, không được lưu lại.',
+  privacyQwen:
+    'Âm thanh chỉ dùng để nhận dạng, không được lưu lại. Câu nhận dạng được gửi tới Qwen (Alibaba Cloud) để hiệu chỉnh.',
+
   record: {
     heading: 'Ghi âm',
     start: 'Nhấn để nói',
@@ -81,6 +95,20 @@ const en: typeof vi = {
     body: 'The speech-recognition model — PhoWhisper-large fine-tuned on ViMD — is still getting its server. Meanwhile, please use the Text tab.',
     switchToText: 'Switch to Text',
   },
+
+  offline: {
+    badge: 'Offline',
+    title: 'The speech server is resting',
+    body: "PhoWhisper-large runs on the team's own GPU machine, which is switched off right now. You can still give commands in the Text tab, or try again later.",
+    retry: 'Try again',
+    retrying: 'Checking…',
+    switchToText: 'Switch to Text',
+  },
+
+  backendLoading: 'The server is loading the model. Wait a few seconds, then send.',
+  privacy: 'Your audio is only used for recognition and is not stored.',
+  privacyQwen:
+    'Your audio is only used for recognition and is not stored. The recognised sentence is sent to Qwen (Alibaba Cloud) for correction.',
 
   record: {
     heading: 'Record',
