@@ -131,6 +131,7 @@ const vi = {
     text: 'Văn bản',
     voice: 'Giọng nói',
     soon: 'Sắp có',
+    offline: 'Tạm nghỉ',
   },
 
   composer: {
@@ -376,6 +377,7 @@ const en: typeof vi = {
     text: 'Text',
     voice: 'Voice',
     soon: 'Coming soon',
+    offline: 'Offline',
   },
 
   composer: {

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ENV } from '@/lib/env'
 import { MAX_AUDIO_SECONDS, MIN_AUDIO_SECONDS } from './validateFile'
 
 /**
- * Microphone recording with MediaRecorder: mono, echo-cancelled, 250 ms chunks, auto-stop at 30 s,
+ * Microphone recording with MediaRecorder: mono, echo-cancelled / noise-suppressed unless
+ * VITE_ASR_MIC_DSP=false, 250 ms chunks, auto-stop at 30 s,
  * recordings under 0.5 s rejected. All failure modes are mapped to a small set of kinds the UI can
  * explain in plain words (including in-app browsers such as Zalo/Facebook that block the mic).
  */
@@ -212,8 +214,9 @@ export function useRecorder(
 
     let media: MediaStream
     try {
+      const dsp = ENV.asr.micDsp
       media = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: { channelCount: 1, echoCancellation: dsp, noiseSuppression: dsp, autoGainControl: dsp },
       })
     } catch (err) {
       fail(mapMediaError(err))

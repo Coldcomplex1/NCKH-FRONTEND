@@ -95,6 +95,8 @@ interface DemoState {
   lastActions: Action[]
   /** Whether AI-invented moves (Qwen) are available on this site ('unknown' until checked). */
   aiMoves: 'unknown' | 'on' | 'off'
+  /** Whether the ASR backend (GET /health) answers ('unknown' until checked; only with VITE_ASR_URL). */
+  asr: 'unknown' | 'ok' | 'loading' | 'offline'
 
   startTurn(turn: Omit<Turn, 'replies' | 'status'>): void
   patchTurn(id: string, patch: Partial<Turn>): void
@@ -118,6 +120,7 @@ interface DemoState {
   announce(ref: ReplyRef, assertive?: boolean): void
   setLastActions(actions: Action[]): void
   setAiMoves(state: 'on' | 'off'): void
+  setAsr(state: 'ok' | 'loading' | 'offline'): void
 }
 
 let seq = 0
@@ -136,6 +139,7 @@ export const useDemo = create<DemoState>()((set, get) => ({
   live: null,
   lastActions: [],
   aiMoves: 'unknown',
+  asr: 'unknown',
 
   startTurn: (turn) =>
     set((s) => ({
@@ -194,6 +198,7 @@ export const useDemo = create<DemoState>()((set, get) => ({
   announce: (ref, assertive = false) => set({ live: { id: nextId(), ref, assertive } }),
   setLastActions: (actions) => set({ lastActions: actions }),
   setAiMoves: (aiMoves) => set({ aiMoves }),
+  setAsr: (asr) => set({ asr }),
 }))
 
 /** Non-React access (engine, pipeline). */

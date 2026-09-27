@@ -1,6 +1,7 @@
 import { Footer } from '@/components/layout/Footer'
 import { Header } from '@/components/layout/Header'
 import { SkipLink } from '@/components/layout/SkipLink'
+import { prefetchAsrStatus } from '@/features/demo/asrStatus'
 import { DemoSection } from '@/features/demo/DemoSection'
 import { prefetchMotionAi } from '@/features/demo/motionAi'
 import { prefetchParser } from '@/features/demo/pipeline'
@@ -14,6 +15,7 @@ export function App() {
   useEffect(() => {
     void prefetchParser()
     prefetchMotionAi()
+    prefetchAsrStatus()
     prefetchResearch()
   }, [])
   return (

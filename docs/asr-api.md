@@ -79,10 +79,17 @@ The UI shows its own friendly text for each case.
 A browser reports CORS and mixed-content failures only as a generic network error. If the site says
 "couldn't reach the server" but `curl` works, check CORS and HTTPS first.
 
-### Optional: `GET /health`
+### `GET /health`
 
-`{"status": "ok", "model": "phowhisper-large-vimd@checkpoint-1750", "device": "cuda"}`. The site does
-not call it in v1, but it's useful for uptime checks.
+`{"status": "ok" | "loading" | "error", "model": "best_model", "device": "cuda"}`. The site calls it
+once on page load and again while the Voice tab is open (`src/features/demo/asrStatus.ts`), with no
+custom headers (a CORS simple request):
+
+| Answer                                                                | What the Voice tab shows                                                           |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `"status": "ok"`                                                      | usable                                                                             |
+| `"status": "loading"`                                                 | usable, with a "loading the model" notice (re-checks every 5 s)                    |
+| anything else, non-2xx (a tunnel's 502), timeout (6 s), network error | inert under a "Tạm nghỉ / Offline" overlay with "Try again" (re-checks every 30 s) |
 
 ---
 

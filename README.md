@@ -4,7 +4,7 @@
 
 **EN —** Showcase site for team **PTNK**'s research project _Improving Multi-Dialect Vietnamese Speech Recognition: Combining ViMD Fine-Tuned ASR Models with an LLM-Based Post-Correction Module to identify dialects used in voice-recognition apps_. On the left, a 3D robot named **Ronaldo** carries out Vietnamese commands (any regional variety, with or without diacritics). On the right is the command input. Scroll down for the research results (PhoWhisper-large fine-tuned on ViMD: 7.84% test WER).
 
-> The **Audio** tab (record / upload speech → our ASR model) is built but disabled until the model backend is online. Right now commands are typed. See [Enable the Audio tab](#enable-the-audio-tab).
+> The **Audio** tab (record / upload speech → our ASR model) turns on when `VITE_ASR_URL` is set. The model runs on the team's GPU machine, not on Vercel; while that machine is off, the tab says so and commands are typed. See [Enable the Audio tab](#enable-the-audio-tab).
 
 ## Quick start
 
@@ -63,11 +63,12 @@ text (or, later, audio → ASR) ──► command parser (NLU) ──► robot e
 
 ## Enable the Audio tab
 
-1. Deploy the ASR backend implementing the contract in [`docs/asr-api.md`](docs/asr-api.md) (`POST /transcribe`, multipart field `file` → `{ "text": "…" }`). It must be **HTTPS** and allow this site in **CORS**.
-2. Set the environment variable `VITE_ASR_URL=https://your-asr-host` (Vercel/Netlify project settings, or `.env.local` for local dev) and **redeploy** — Vite inlines env vars at build time. See `.env.example`.
-3. To try the audio UI without a backend in development: `VITE_ASR_MOCK=true npm run dev`.
+1. Run the ASR backend implementing the contract in [`docs/asr-api.md`](docs/asr-api.md) (`POST /transcribe`, multipart field `file` → `{ "text": "…" }`; `GET /health`). It must be **HTTPS** and allow this site in **CORS**. The team runs PhoWhisper-large on its own RTX 3060 and publishes it with **Tailscale Funnel** (`https://<machine>.<tailnet>.ts.net`, a fixed URL); the backend's `public.ps1` starts it in a locked-down public mode (only `/transcribe` and `/health`, rate-limited).
+2. Set the environment variable `VITE_ASR_URL=https://your-asr-host` (Vercel project settings, for **Production and Preview**, or `.env.development.local` for local dev — not `.env.local`, which the tests would read too) and **redeploy** — Vite inlines env vars at build time. See `.env.example`.
+3. While the backend is down, the Voice tab shows "Tạm nghỉ" instead of failing after a recording (it checks `GET /health`).
+4. To try the audio UI without a backend in development: `VITE_ASR_MOCK=true npm run dev`.
 
-Microphone access requires HTTPS (or `localhost`).
+Microphone access requires HTTPS (or `localhost`). Browser echo cancellation / noise suppression / auto gain are on; `VITE_ASR_MIC_DSP=false` records the raw microphone signal instead.
 
 ## AI moves (Qwen)
 

@@ -26,6 +26,9 @@ export function InputPanel() {
   const [tab, setTab] = useState<InputTab>('text')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const aiOn = useDemo((s) => s.aiMoves === 'on')
+  const asr = useDemo((s) => s.asr)
+  // Only a real backend can be offline; the dev mock is always "up".
+  const backend = ENV.asr.enabled ? asr : 'ok'
   const t = useDict(demoDict)
 
   const switchToText = () => {
@@ -48,7 +51,12 @@ export function InputPanel() {
 
   return (
     <div className="@container flex min-w-0 flex-col gap-5">
-      <InputTabs value={tab} onChange={setTab} voiceSoon={!AUDIO_LIVE} />
+      <InputTabs
+        value={tab}
+        onChange={setTab}
+        voiceSoon={!AUDIO_LIVE}
+        voiceOffline={AUDIO_LIVE && backend === 'offline'}
+      />
 
       {/* Kept mounted (hidden) so the SkipLink target #command-input always exists. */}
       <div
@@ -74,7 +82,7 @@ export function InputPanel() {
       <div role="tabpanel" id={panelId('voice')} aria-labelledby={tabId('voice')} hidden={tab !== 'voice'}>
         {tab === 'voice' ? (
           <Suspense fallback={<div className="min-h-40" aria-busy="true" />}>
-            <AudioTab live={AUDIO_LIVE} onSwitchToText={switchToText} />
+            <AudioTab live={AUDIO_LIVE} backend={backend} onSwitchToText={switchToText} />
           </Suspense>
         ) : null}
       </div>

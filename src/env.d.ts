@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_ASR_ENABLED?: string
   readonly VITE_ASR_TIMEOUT_MS?: string
   readonly VITE_ASR_MAX_UPLOAD_MB?: string
+  /** "false" records the raw mic (no echo cancellation / noise suppression / auto gain). */
+  readonly VITE_ASR_MIC_DSP?: string
   /** Dev only: fake transcripts to exercise the audio UI without a backend. */
   readonly VITE_ASR_MOCK?: string
   /** Command parser engine: "rules" (default) or "llm" (future Qwen parser). */
